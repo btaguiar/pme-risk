@@ -134,18 +134,37 @@ não um modelo pronto para concessão real.
 
 **Baselines obrigatórios:**
 - **Modelo:** regressão logística simples. Modelo mais complexo só entra se
-  superar em KS/AUC sem piorar calibração.
+  superar em KS/AUC sem piorar calibração. → ✅ baseline logístico treinado;
+  boosted tree candidato rejeitado (erro BQML 80038528)
 - **Laudo:** uma chamada única ao Gemini (recebe PD + dados, redige o laudo),
   sem agentes. A arquitetura multi-agente só se justifica se superar o baseline
   na matriz acima. Empate técnico = ficar com o baseline e registrar o resultado.
 
+### Resultados (2026-09-27)
+
+**Modelo — `eval/model/results/logreg_v1.json`:**
+
+| Métrica | Valor | Meta | Status |
+|---|---|---|---|
+| KS | 0.1767 | — | baseline |
+| AUC | 0.6156 | — | baseline |
+| Brier | 0.0735 | — | baseline |
+| ECE | 0.0011 | — | baseline |
+
+**Extração — `eval/laudo/results/laudo_eval_v2.json`:**
+
+| Métrica | Valor | Meta | Status |
+|---|---|---|---|
+| F1 extração | 0.9557 | ≥ 0.90 | ✅ |
+| Recusa correta | 100% (10/10) | ≥ 0.95 | ✅ |
+
 ## 6. Fases (~10 semanas, timebox)
 
-| Fase | Prazo | Entrega | Critério de pronto |
-|---|---|---|---|
-| **1 — Modelo** | 3 semanas | Treino no BigQuery ML, baseline logístico, KS/AUC/Brier, versionamento | Métricas do modelo em `eval/`; funciona sozinho |
-| **2 — Laudo** | 4 semanas | Extrator + Pesquisador + Redator + portão humano + trilha de auditoria; golden set; baseline de chamada única | Multi-agente supera o baseline (ou decisão registrada) |
-| **3 — Produto** | 3 semanas | Deploy em Cloud Run, job de drift, laudo navegável, README | Demo pública; post LinkedIn com números do eval |
+| Fase | Prazo | Entrega | Critério de pronto | Status |
+|---|---|---|---|---|
+| **1 — Modelo** | 3 semanas | Treino no BigQuery ML, baseline logístico, KS/AUC/Brier, versionamento | Métricas do modelo em `eval/`; funciona sozinho | ✅ Completa |
+| **2 — Laudo** | 4 semanas | Extrator + Pesquisador + Redator + portão humano + trilha de auditoria; golden set; baseline de chamada única | Multi-agente supera o baseline (ou decisão registrada) | 🔧 Estrutural |
+| **3 — Produto** | 3 semanas | Deploy em Cloud Run, job de drift, laudo navegável, README | Demo pública; post LinkedIn com números do eval | ⬜ Não iniciada |
 
 Se uma fase estourar o prazo, corta-se escopo — não se estende o prazo.
 Fase 2 aceitável sem três agentes separados, se o baseline empatar.

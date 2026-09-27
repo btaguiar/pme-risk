@@ -86,7 +86,7 @@ nada de métrica citada que não esteja num JSON versionado ali.
 | Empacotamento | `uv` + `pyproject.toml` | rápido, lockfile determinístico |
 | API | FastAPI + Pydantic v2 | schemas = contrato entre agentes e validação de request |
 | Modelo | BigQuery ML (`LOGISTIC_REG`, depois `BOOSTED_TREE_CLASSIFIER`) | já decidido no plano (§3, §5) |
-| LLM | Gemini via `google-genai` SDK | free tier no flash; citado no plano |
+| LLM | Gemini via `google-genai` SDK + **Vertex AI** (ADC, sem API key) | free tier no flash; citado no plano |
 | Busca vetorial | `BigQuery VECTOR_SEARCH` | decidido no plano — não Vertex AI Vector Search |
 | Storage de estado (laudos, portão humano, auditoria, registry) | Tabelas BigQuery | evita introduzir Firestore/Datastore como segundo sistema de dados; cabe no free tier de storage (10 GB) |
 | Deploy | Cloud Run + Docker | decidido no plano |
@@ -115,11 +115,16 @@ Pydantic em `agents/schemas.py`, usado tanto pelo Extrator quanto pela API:
   "anos_operacao": "number",
   "faturamento_anual_declarado": "number (BRL) — sempre ⚠️ declarado",
   "valor_solicitado": "number (BRL)",
-  "prazo_meses": "integer",
+  "prazo_meses": "integer | null — opcional, nem sempre mencionado",
   "finalidade": "string livre",
   "cnpj": "string | null — se presente, habilita enriquecimento via quimera-core"
 }
 ```
+
+**Decisões de implementação (2026-09-27):**
+- `prazo_meses` é opcional (`int | None`) — nem sempre mencionado no pedido
+- `valor_solicitado` e `faturamento_anual_declarado` são obrigatórios
+- `setor` e `finalidade` são normalizados para `snake_case` pelo Extrator
 
 ### 3.2 Decisão em aberto: mapeamento de features Home Credit → PME
 
@@ -328,10 +333,19 @@ de log-based alert do Cloud Monitoring free tier cobre isso.
 
 ## 9. Pendências que exigem decisão do desenvolvedor
 
-- Confirmar ou recriar `BRIEF.md` (referenciado no plano, ausente no repo).
-- Validar a tabela de mapeamento de features (§3.2) contra os dados reais do
-  Home Credit antes de tratá-la como definitiva — ela é a decisão de
-  modelagem mais sensível do projeto e não deveria ser travada sem olhar a
-  EDA.
-- Terraform vs. scripts `gcloud` (§2) — recomendação dada, mas é preferência
-  de quem vai manter.
+- ~~Confirmar ou recriar `BRIEF.md`~~ — ✅ recriado em 2026-09-27
+- ~~Validar a tabela de mapeamento de features (§3.2)~~ — ⚠️ mapeamento
+  documentado como hipótese em `model/features.py`; validação completa
+  requer EDA adicional
+- ~~Terraform vs. scripts `gcloud` (§2)~~ — ✅ scripts `gcloud` (decidido)
+
+## 10. Decisões de implementação (2026-09-27)
+
+| Decisão | Escolha | Motivo |
+|---|---|---|
+| `prazo_meses` opcional | `int \| None` | Nem sempre mencionado no pedido |
+| LLM auth | Vertex AI via ADC | Sem API key, integração GCP nativa |
+| Extração `setor`/`finalidade` | `snake_case` normalizado | Consistência para avaliação |
+| `valor_solicitado` obrigatório | Sim | Essencial para análise de crédito |
+| `verificado` no Pesquisador | Só se `cnpj_dados` existe | Stub retorna None → tudo declarado |
+| Boosted tree | `candidate_rejected` | Erro BQML 80038528, baseline promovido |
