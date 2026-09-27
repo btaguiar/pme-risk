@@ -1,0 +1,10 @@
+{
+  "model_version": "logreg_v1",
+  "algoritmo": "LOGISTIC_REG",
+  "feature_set_version": "v1_hipotese",
+  "n_amostras": 60994,
+  "ks": 0.1767,
+  "auc": 0.6156,
+  "brier": 0.0735,
+  "ece": 0.0011
+}

@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PedidoCredito",
+  "description": "Schema do pedido de crédito PME — também vira BaseModel Pydantic em agents/schemas.py",
+  "type": "object",
+  "properties": {
+    "setor": {
+      "type": "string",
+      "description": "CNAE ou descrição livre — o Extrator normaliza"
+    },
+    "porte": {
+      "type": "string",
+      "enum": ["MEI", "ME", "EPP"],
+      "description": "Porte da empresa"
+    },
+    "uf": {
+      "type": "string",
+      "pattern": "^[A-Z]{2}$",
+      "description": "UF com 2 letras maiúsculas"
+    },
+    "anos_operacao": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Anos de operação da empresa"
+    },
+    "faturamento_anual_declarado": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Faturamento anual em BRL — sempre ⚠️ declarado pelo solicitante"
+    },
+    "valor_solicitado": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Valor do crédito solicitado em BRL"
+    },
+    "prazo_meses": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Prazo de pagamento em meses"
+    },
+    "finalidade": {
+      "type": "string",
+      "description": "Finalidade do crédito (texto livre)"
+    },
+    "cnpj": {
+      "type": ["string", "null"],
+      "pattern": "^\\d{14}$",
+      "description": "CNPJ — se presente, habilita enriquecimento via quimera-core"
+    }
+  },
+  "required": [
+    "setor",
+    "porte",
+    "uf",
+    "anos_operacao",
+    "faturamento_anual_declarado",
+    "valor_solicitado",
+    "prazo_meses",
+    "finalidade"
+  ]
+}
