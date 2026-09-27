@@ -16,7 +16,7 @@ Receber um texto livre descrevendo um pedido de crédito e extrair os campos est
 | `anos_operacao` | number | Anos de operação da empresa |
 | `faturamento_anual_declarado` | number | BRL — sempre declarado pelo solicitante |
 | `valor_solicitado` | number | BRL |
-| `prazo_meses` | integer | Prazo em meses |
+| `prazo_meses` | integer ou null | Prazo em meses — **opcional**, use null se não mencionado |
 | `finalidade` | string | Para que é o crédito |
 | `cnpj` | string ou null | 14 dígitos se presente |
 

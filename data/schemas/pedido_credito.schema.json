@@ -34,9 +34,9 @@
       "description": "Valor do crédito solicitado em BRL"
     },
     "prazo_meses": {
-      "type": "integer",
+      "type": ["integer", "null"],
       "minimum": 1,
-      "description": "Prazo de pagamento em meses"
+      "description": "Prazo de pagamento em meses (opcional — nem sempre mencionado)"
     },
     "finalidade": {
       "type": "string",
@@ -55,7 +55,6 @@
     "anos_operacao",
     "faturamento_anual_declarado",
     "valor_solicitado",
-    "prazo_meses",
     "finalidade"
   ]
 }

@@ -32,4 +32,37 @@ bq --project_id="${PROJECT_ID}" query \
     nota STRING
   )"
 
+echo "Criando tabela laudos..."
+
+bq --project_id="${PROJECT_ID}" query \
+  --use_legacy_sql=false \
+  "CREATE TABLE IF NOT EXISTS \`${PROJECT_ID}.${DATASET}.laudos\` (
+    laudo_id STRING NOT NULL,
+    pedido_bruto STRING,
+    enriquecidos_json STRING,
+    resultado_modelo_json STRING,
+    texto STRING,
+    evidencias_json STRING,
+    status STRING NOT NULL,
+    decidido_por STRING,
+    decidido_em TIMESTAMP,
+    decisao STRING,
+    observacao_humana STRING,
+    criado_em TIMESTAMP NOT NULL
+  )"
+
+echo "Criando tabela trilha_auditoria..."
+
+bq --project_id="${PROJECT_ID}" query \
+  --use_legacy_sql=false \
+  "CREATE TABLE IF NOT EXISTS \`${PROJECT_ID}.${DATASET}.trilha_auditoria\` (
+    laudo_id STRING NOT NULL,
+    pedido_bruto STRING,
+    model_version STRING,
+    prompts_usados STRING,
+    decisao_humana STRING,
+    etapas_json STRING,
+    criado_em TIMESTAMP NOT NULL
+  )"
+
 echo "Setup concluído."

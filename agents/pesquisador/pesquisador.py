@@ -46,20 +46,21 @@ def enriquecer(extraidos: DadosExtraidos) -> DadosEnriquecidos:
     """
     # Determina fonte por campo
     fonte_por_campo: dict[str, Literal["verificado", "declarado"]] = {}
+    cnpj_dados = None
+
+    # Enriquecimento CNPJ (stub) — só marca "verificado" se retornar dados
+    if extraidos.pedido.cnpj:
+        cnpj_dados = _enriquecer_cnpj(extraidos.pedido.cnpj)
+
     for campo in extraidos.pedido.model_dump():
         if campo == "cnpj":
             continue
         if campo in CAMPOS_DECLARADOS:
             fonte_por_campo[campo] = "declarado"
-        elif extraidos.pedido.cnpj and campo in CAMPOS_VERIFICAVEIS:
+        elif cnpj_dados and campo in CAMPOS_VERIFICAVEIS:
             fonte_por_campo[campo] = "verificado"
         else:
             fonte_por_campo[campo] = "declarado"
-
-    # Enriquecimento CNPJ (stub)
-    cnpj_dados = None
-    if extraidos.pedido.cnpj:
-        cnpj_dados = _enriquecer_cnpj(extraidos.pedido.cnpj)
 
     return DadosEnriquecidos(
         extraidos=extraidos,

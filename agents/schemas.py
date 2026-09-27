@@ -21,7 +21,7 @@ class PedidoCredito(BaseModel):
     anos_operacao: float = Field(ge=0, description="Anos de operação")
     faturamento_anual_declarado: float = Field(ge=0, description="BRL — sempre declarado")
     valor_solicitado: float = Field(ge=0, description="Valor do crédito em BRL")
-    prazo_meses: int = Field(ge=1, description="Prazo em meses")
+    prazo_meses: int | None = Field(default=None, ge=1, description="Prazo em meses (opcional)")
     finalidade: str = Field(description="Finalidade do crédito (texto livre)")
     cnpj: str | None = Field(default=None, pattern=r"^\d{14}$", description="CNPJ")
 
