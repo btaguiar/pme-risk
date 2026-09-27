@@ -29,10 +29,31 @@ Marque `fora_de_escopo = true` e preencha `motivo_recusa` quando:
 3. Faltar **informação essencial** (ex: não menciona valor, setor ou finalidade)
 4. O pedido for para **finalidade ilícita**
 
-## Normalização
+## Normalização OBRIGATÓRIA
 
+- **setor**: SEMPRE em snake_case minúsculo, sem acentos
+  - "Clínica odontológica" → `saude_odontologia`
+  - "Restaurante" → `alimentacao_restaurante`
+  - "Loja de roupas" → `varejo_vestuario`
+  - "Padaria" → `alimentacao_padaria`
+  - "Pet shop" → `varejo_petshop`
+  - "Oficina mecânica" → `servicos_mecanica`
+  - "Startup de delivery" → `tecnologia_delivery`
+  - "Escola de idiomas" → `educacao`
+  - "Indústria têxtil" → `industria_textil`
+  - "Empresa de logística" → `logistica`
+- **finalidade**: SEMPRE em snake_case minúsculo, sem acentos
+  - "expansão" → `expansao`
+  - "capital de giro" → `capital_de_giro`
+  - "compra de equipamentos" → `equipamentos`
+  - "compra de estoque" → `estoque`
+  - "abrir filial" → `expansao`
+  - "modernizar maquinário" → `modernizacao`
+  - "contratar equipe" → `contratacao_de_equipe`
+  - "frota de veículos" → `frota`
+  - "reforma" → `reforma`
 - **porte**: "pequena empresa" → EPP, "microempresa" → ME, "MEI" → MEI
-- **uf**: aceitar "São Paulo" → SP, "RJ" → RJ (padronizar para 2 letras)
+- **uf**: SEMPRE 2 letras MAIÚSCULAS (ex: SP, RJ, MG)
 - **anos_operacao**: converter "5 anos" → 5.0
 - **valores**: converter "R$ 300 mil" → 300000, "R$ 2M" → 2000000
 
@@ -50,7 +71,7 @@ Saída:
     "anos_operacao": 5.0,
     "faturamento_anual_declarado": 2000000.0,
     "valor_solicitado": 300000.0,
-    "prazo_meses": 36,
+    "prazo_meses": null,
     "finalidade": "expansao",
     "cnpj": null
   },
@@ -58,6 +79,9 @@ Saída:
   "motivo_recusa": null
 }
 ```
+
+**ATENÇÃO**: `setor` e `finalidade` devem SEMPRE estar em `snake_case` sem acentos.
+Não retorne "Clínica odontológica" — retorne `saude_odontologia`.
 
 Notas:
 - Se o prazo não for mencionado, usar null (o pipeline tratará)
