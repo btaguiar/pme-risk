@@ -28,6 +28,9 @@ build/
 .DS_Store
 Thumbs.db
 
+# Worktrees
+.worktrees/
+
 # Credentials
 *.json
 !data/schemas/*.json
