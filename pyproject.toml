@@ -34,3 +34,4 @@ known-first-party = ["model", "agents", "api", "eval"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["."]
