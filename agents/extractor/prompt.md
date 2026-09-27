@@ -26,7 +26,7 @@ Marque `fora_de_escopo = true` e preencha `motivo_recusa` quando:
 
 1. O pedido **não for de crédito para PME** (ex: pessoa física, empréstimo pessoal)
 2. O pedido estiver **em outro idioma** que não português
-3. Faltar **informação essencial** (ex: não menciona valor, prazo ou finalidade)
+3. Faltar **informação essencial** (ex: não menciona valor, setor ou finalidade)
 4. O pedido for para **finalidade ilícita**
 
 ## Normalização
