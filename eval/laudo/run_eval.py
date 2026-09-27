@@ -80,14 +80,14 @@ def calcular_f1_campos(esperado: dict, obtido: dict) -> float:
 
 def executar_golden_set(
     extrair_fn=None,
-    api_key: str | None = None,
+    project_id: str | None = None,
     max_itens: int | None = None,
 ) -> RelatorioEval:
     """Executa o golden set contra o Extrator.
 
     Args:
         extrair_fn: função de extração (para testes) ou None para usar o real
-        api_key: chave da API Gemini
+        project_id: GCP project ID
         max_itens: limitar número de itens (para testes rápidos)
 
     Returns:
@@ -109,7 +109,7 @@ def executar_golden_set(
 
         inicio = time.monotonic()
         try:
-            obtido = extrair_fn(texto, api_key=api_key)
+            obtido = extrair_fn(texto, project_id=project_id)
             obtido_dict = obtido.pedido.model_dump()
             fora_escopo = obtido.fora_de_escopo
             latencia = time.monotonic() - inicio
@@ -188,7 +188,7 @@ if __name__ == "__main__":
     import os
 
     relatorio = executar_golden_set(
-        api_key=os.environ.get("GOOGLE_API_KEY"),
+        project_id=os.environ.get("GCP_PROJECT_ID"),
         max_itens=5,  # limitar para teste rápido
     )
     path = salvar_relatorio(relatorio)

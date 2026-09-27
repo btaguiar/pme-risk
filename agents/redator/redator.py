@@ -2,11 +2,13 @@
 
 Referência: SPEC §4.2
 Regra: NUNCA alterar a PD (PLANO §2, BRIEF.md)
+Usa Vertex AI via ADC (sem API key).
 """
 
 from __future__ import annotations
 
 import json
+import os
 from pathlib import Path
 
 from google import genai
@@ -18,6 +20,7 @@ from agents.schemas import DadosEnriquecidos, ResultadoModelo
 PROMPT_PATH = Path(__file__).parent / "prompt.md"
 
 REDACTOR_MODEL = "gemini-2.5-flash"
+VERTEX_LOCATION = os.environ.get("VERTEX_LOCATION", "us-central1")
 
 
 def _carregar_prompt() -> str:
@@ -34,21 +37,25 @@ class ResultadoRedacao(BaseModel):
 def redigir(
     enriquecidos: DadosEnriquecidos,
     resultado_modelo: ResultadoModelo,
-    api_key: str | None = None,
+    project_id: str | None = None,
 ) -> ResultadoRedacao:
     """Redige o laudo de risco.
 
     Args:
         enriquecidos: dados com fonte_por_campo
         resultado_modelo: PD + fatores (FROZEN — não será alterado)
-        api_key: chave da API Gemini
+        project_id: GCP project ID (usa GCP_PROJECT_ID se None)
 
     Returns:
         ResultadoRedacao com texto e evidências
     """
-    client = genai.Client(api_key=api_key)
+    project_id = project_id or os.environ["GCP_PROJECT_ID"]
+    client = genai.Client(
+        vertexai=True,
+        project=project_id,
+        location=VERTEX_LOCATION,
+    )
 
-    # Serializa dados para o prompt
     dados_json = json.dumps(
         {
             "enriquecidos": enriquecidos.model_dump(),
