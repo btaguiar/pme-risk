@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
@@ -10,6 +10,8 @@ from pydantic import BaseModel, Field
 from api.pipeline import Pipeline, get_pipeline
 
 router = APIRouter(tags=["laudos"])
+
+PipelineDep = Annotated[Pipeline, Depends(get_pipeline)]
 
 
 class DecisaoRequest(BaseModel):
@@ -19,9 +21,7 @@ class DecisaoRequest(BaseModel):
 
 
 @router.patch("/laudos/{laudo_id}/decisao")
-def decidir_laudo(
-    laudo_id: str, body: DecisaoRequest, pipeline: Pipeline = Depends(get_pipeline)
-) -> dict:
+def decidir_laudo(laudo_id: str, body: DecisaoRequest, pipeline: PipelineDep) -> dict:
     row = pipeline.decidir(laudo_id, body.decisao, body.decidido_por, body.observacao)
     if row is None:
         raise HTTPException(status_code=404, detail="Laudo não encontrado")
