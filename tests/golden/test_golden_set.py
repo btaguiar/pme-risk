@@ -1,7 +1,7 @@
-"""Testes do golden set — reusa código do eval (SPEC §6).
+"""Testes do golden set — estrutura e anotação, sem chamar o LLM.
 
-Testa o schema e a estrutura do golden set sem chamar o LLM.
-Avaliação completa (F1, recusa) roda em eval/laudo/run_eval.py.
+A métrica (F1, recusa) é testada em tests/unit/test_eval_laudo.py e roda
+contra o Extrator em eval/laudo/run_eval.py.
 """
 
 from __future__ import annotations
@@ -32,27 +32,25 @@ class TestGoldenSet:
             if esp.get("fora_de_escopo", False):
                 assert esp.get("motivo_recusa"), f"Item {i}: fora_de_escopo sem motivo_recusa"
 
-    def test_valor_solicitado_null_implica_fora_de_escopo(self):
-        for _i, item in enumerate(_carregar()):
-            esp = item["esperado"]
-            if esp.get("valor_solicitado") is None and not esp.get("fora_de_escopo", False):
-                # Só ok se o texto realmente não menciona valor
-                pass  # validado pelo Extrator no eval completo
+    def test_item_em_escopo_anota_todos_os_campos(self):
+        """null explícito = "não mencionado" — é o que permite medir alucinação."""
+        from eval.laudo.run_eval import CAMPOS
 
-    def test_campos_obrigatorios_quando_em_escopo(self):
-        """Campos obrigatórios não podem ser None; opcionais podem.
-
-        Opcionais: prazo_meses, cnpj (ver agents/schemas.py).
-        """
-        opcionais = {"prazo_meses", "cnpj", "fora_de_escopo", "motivo_recusa"}
         for i, item in enumerate(_carregar()):
             esp = item["esperado"]
             if esp.get("fora_de_escopo", False):
                 continue
-            for campo, valor in esp.items():
-                if campo in opcionais:
-                    continue
-                assert valor is not None, f"Item {i}: campo obrigatório '{campo}' é None"
+            faltando = [c for c in CAMPOS if c not in esp]
+            assert not faltando, f"Item {i}: campos sem anotação {faltando}"
+
+    def test_campos_essenciais_quando_em_escopo(self):
+        """Sem setor, valor ou finalidade o pedido deve ser recusado (prompt do Extrator)."""
+        for i, item in enumerate(_carregar()):
+            esp = item["esperado"]
+            if esp.get("fora_de_escopo", False):
+                continue
+            for campo in ("setor", "valor_solicitado", "finalidade"):
+                assert esp.get(campo) is not None, f"Item {i}: '{campo}' essencial é None"
 
     def test_porte_valores_validos(self):
         validos = {"MEI", "ME", "EPP"}

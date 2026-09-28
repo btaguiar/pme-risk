@@ -62,13 +62,38 @@ Regra: só números reproduzíveis a partir de `eval/*/results/` (BRIEF.md).
 > **Ressalva:** o Brier mal supera o preditor constante (0.0735 vs 0.0744) — o
 > modelo ordena risco (KS/AUC) melhor do que estima probabilidade absoluta.
 
-### Extração — `eval/laudo/results/laudo_eval_v4.json`
+### Extração — `eval/laudo/results/laudo_eval_v5.json`
 
 | Métrica | Valor | Meta | Status |
 |---|---|---|---|
-| F1 extração | 0.9493 | ≥ 0.90 | ✅ |
+| F1 extração (micro, por campo) | 0.9167 (P 0.9267 / R 0.9068) | ≥ 0.90 | ✅ |
+| Alucinação (valor em campo não mencionado) | 0 de 72 casos | — | ✅ |
 | Recusa correta | 100% (11/11) | ≥ 95% | ✅ |
-| Latência média | 5.68s | — | — |
+| Recusa indevida | 2.56% (1/39) | — | ⚠️ |
+| Latência média | 6.54s | — | — |
+
+**Método v5** (`eval/laudo/run_eval.py`, testado em `tests/unit/test_eval_laudo.py`):
+os 39 itens em escopo anotam os 9 campos, com `null` = "não mencionado"; valor
+errado conta FP+FN; item que falha ou é recusado por engano fica no
+denominador. Os evals v1–v4 pulavam campos `null` (não viam alucinação),
+excluíam falhas e só avaliavam `faturamento` em 1 item. **Na mesma rodada, o
+método antigo dá 0.9592** — ~4 pontos do F1 anterior eram metodologia.
+
+| F1 por campo | |
+|---|---|
+| porte, UF, anos, faturamento, valor, prazo | 0.987 – 1.0 |
+| `finalidade` | 0.8571 |
+| `setor` | **0.5974** |
+| `cnpj` | — (nenhum texto tem CNPJ; nenhum inventado) |
+
+> **Ressalvas:** (1) quase todo erro é `setor`/`finalidade`, comparados por
+> igualdade exata de rótulo livre — muitos são sinônimos (`varejo_otica` ×
+> `varejo_optica`, `alimentacao_padaria` × `alimentacao_panificadora`). O
+> número mede concordância de vocabulário, não só extração; a correção de fundo
+> é `setor` virar vocabulário fechado (CNAE), não afrouxar a métrica.
+> (2) A recusa indevida é o item 9 ("quero abrir uma empresa") — anotação
+> discutível: empresa sem operação pode ser recusa legítima. Mantido como está
+> para não ajustar o rótulo ao resultado.
 
 **Não implementados nesta fase** (ver PLANO §5):
 - Fidedignidade do laudo (% de afirmações com evidência)

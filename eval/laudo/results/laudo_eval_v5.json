@@ -1,0 +1,224 @@
+{
+  "metodo": "v5",
+  "parcial": false,
+  "f1_extracao": 0.9167,
+  "precisao": 0.9267,
+  "recall": 0.9068,
+  "f1_macro_por_item": 0.9029,
+  "f1_metodo_v4": 0.9592,
+  "tp": 253,
+  "fp": 20,
+  "fn": 26,
+  "classes": {
+    "acerto": 253,
+    "erro_valor": 20,
+    "negativo": 72,
+    "omissao": 6
+  },
+  "f1_por_campo": {
+    "setor": 0.5974,
+    "porte": 0.987,
+    "uf": 1.0,
+    "anos_operacao": 0.987,
+    "faturamento_anual_declarado": 0.987,
+    "valor_solicitado": 0.987,
+    "prazo_meses": 1.0,
+    "finalidade": 0.8571,
+    "cnpj": null
+  },
+  "taxa_recusa_correta": 1.0,
+  "n_recusas_esperadas": 11,
+  "n_recusas_corretas": 11,
+  "taxa_recusa_indevida": 0.0256,
+  "n_recusas_indevidas": 1,
+  "n_itens": 50,
+  "n_em_escopo": 39,
+  "n_falhas_execucao": 0,
+  "latencia_media_s": 6.54,
+  "custo_estimado_usd": 0.005,
+  "divergencias": [
+    {
+      "indice": 1,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "transporte_entregas",
+      "obtido": "logistica_entregas"
+    },
+    {
+      "indice": 1,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "compra_de_ativo",
+      "obtido": "frota"
+    },
+    {
+      "indice": 7,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "beleza",
+      "obtido": "servicos_beleza"
+    },
+    {
+      "indice": 9,
+      "campo": "setor",
+      "tipo": "omissao",
+      "esperado": "tecnologia",
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "porte",
+      "tipo": "omissao",
+      "esperado": "ME",
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "anos_operacao",
+      "tipo": "omissao",
+      "esperado": 0,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "faturamento_anual_declarado",
+      "tipo": "omissao",
+      "esperado": 0,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "valor_solicitado",
+      "tipo": "omissao",
+      "esperado": 100000,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "finalidade",
+      "tipo": "omissao",
+      "esperado": "abertura_de_empresa",
+      "obtido": null
+    },
+    {
+      "indice": 14,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "infraestrutura",
+      "obtido": "expansao"
+    },
+    {
+      "indice": 16,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "consultoria_financeira",
+      "obtido": "servicos_consultoria_financeira"
+    },
+    {
+      "indice": 25,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "distribuicao_bebidas",
+      "obtido": "comercio_bebidas"
+    },
+    {
+      "indice": 25,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "infraestrutura",
+      "obtido": "construcao_galpao"
+    },
+    {
+      "indice": 26,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "beleza_barbearia",
+      "obtido": "servicos_barbearia"
+    },
+    {
+      "indice": 29,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "saude_fitness",
+      "obtido": "saude_academia"
+    },
+    {
+      "indice": 30,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "varejo_construcao",
+      "obtido": "varejo_materiais_construcao"
+    },
+    {
+      "indice": 32,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "turismo",
+      "obtido": "turismo_agencia_viagens"
+    },
+    {
+      "indice": 34,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "engenharia_civil",
+      "obtido": "servicos_engenharia_civil"
+    },
+    {
+      "indice": 34,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "projeto",
+      "obtido": "projeto_comercial"
+    },
+    {
+      "indice": 35,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "varejo_optica",
+      "obtido": "varejo_otica"
+    },
+    {
+      "indice": 37,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "industria_moveis",
+      "obtido": "industria_moveleira"
+    },
+    {
+      "indice": 43,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "servicos_reparos",
+      "obtido": "servicos_gerais"
+    },
+    {
+      "indice": 44,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "alimentacao_panificadora",
+      "obtido": "alimentacao_padaria"
+    },
+    {
+      "indice": 44,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "expansao",
+      "obtido": "modernizacao"
+    },
+    {
+      "indice": 46,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "educacao_infantil",
+      "obtido": "educacao"
+    },
+    {
+      "indice": 48,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "transporte_cargas",
+      "obtido": "logistica"
+    }
+  ],
+  "falhas": []
+}

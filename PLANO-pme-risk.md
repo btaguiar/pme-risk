@@ -151,28 +151,31 @@ não um modelo pronto para concessão real.
   sem agentes. A arquitetura multi-agente só se justifica se superar o baseline
   na matriz acima. Empate técnico = ficar com o baseline e registrar o resultado.
 
-### Resultados (2026-09-27)
+### Resultados (2026-09-28)
 
-**Modelo — `eval/model/results/logreg_v1.json`:**
+**Modelo — `eval/model/results/logreg_v2.json`** (em produção; v1 aposentado por
+skew treino/serviço — ver README):
 
 | Métrica | Valor | Meta | Status |
 |---|---|---|---|
-| KS | 0.1767 | — | baseline |
-| AUC | 0.6156 | — | baseline |
-| Brier | 0.0735 | — | baseline |
-| ECE | 0.0011 | — | baseline |
+| KS | 0.1762 | — | baseline |
+| AUC | 0.6141 | — | baseline |
+| Brier | 0.0735 | < ingênuo (0.0744) | ⚠️ margem mínima |
+| ECE | 0.0013 | — | baseline |
 | Holdout | 60.994 amostras | — | — |
 
-**Extração — `eval/laudo/results/laudo_eval_v3.json`:**
+**Extração — `eval/laudo/results/laudo_eval_v5.json`** (método v5, ver README):
 
 | Métrica | Valor | Meta | Status |
 |---|---|---|---|
-| F1 extração | 0.9539 | ≥ 0.90 | ✅ |
-| Recusa correta | 90.91% (10/11) | ≥ 0.95 | ⚠️ |
-| Latência média | 5.73s | — | — |
+| F1 extração (micro) | 0.9167 | ≥ 0.90 | ✅ |
+| Recusa correta | 100% (11/11) | ≥ 0.95 | ✅ |
+| Recusa indevida | 2.56% (1/39) | — | ⚠️ |
+| Latência média | 6.54s | — | — |
 
-> Ressalva: F1 pode estar inflado por vazamento teste↔ajuste (exemplos no
-> prompt são itens do golden set). Ver README.
+> Ressalvas: F1 pode estar inflado por vazamento teste↔ajuste (exemplos no
+> prompt são itens do golden set); `setor` (F1 0.60) é comparado por igualdade
+> exata de rótulo livre. Ver README.
 
 ## 6. Fases (~10 semanas, timebox)
 
