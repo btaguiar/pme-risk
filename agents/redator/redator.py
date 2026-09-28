@@ -50,14 +50,6 @@ def redigir(
     Returns:
         ResultadoRedacao com texto e evidências
     """
-    project_id = project_id or os.environ["GCP_PROJECT_ID"]
-    client = genai.Client(
-        vertexai=True,
-        project=project_id,
-        location=VERTEX_LOCATION,
-        http_options=HTTP_OPTIONS,
-    )
-
     dados_json = json.dumps(
         {
             "enriquecidos": enriquecidos.model_dump(),
@@ -78,6 +70,22 @@ Redija o laudo com base nos seguintes dados:
 IMPORTANTE: A PD é {resultado_modelo.pd:.4f}. Use exatamente este valor.
 """
 
+    return chamar_redator(prompt, project_id)
+
+
+def chamar_redator(prompt: str, project_id: str | None = None) -> ResultadoRedacao:
+    """Chamada ao Gemini com a configuração do Redator.
+
+    Compartilhada com o baseline de chamada única do eval
+    (eval/laudo/baseline_chamada_unica.py): muda só o conteúdo do prompt.
+    """
+    project_id = project_id or os.environ["GCP_PROJECT_ID"]
+    client = genai.Client(
+        vertexai=True,
+        project=project_id,
+        location=VERTEX_LOCATION,
+        http_options=HTTP_OPTIONS,
+    )
     response = client.models.generate_content(
         model=REDACTOR_MODEL,
         contents=prompt,
@@ -87,6 +95,5 @@ IMPORTANTE: A PD é {resultado_modelo.pd:.4f}. Use exatamente este valor.
             temperature=0.3,
         ),
     )
-
     resultado = json.loads(response.text)
     return ResultadoRedacao.model_validate(resultado)

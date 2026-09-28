@@ -10,8 +10,8 @@ aprova ou rejeita antes do laudo final.
 | Fase | Status | Entrega |
 |---|---|---|
 | 1 — Modelo | ✅ Completa | LOGISTIC_REG `logreg_v2` em produção, métricas em `eval/model/results/` |
-| 2 — Laudo | ✅ Estrutural | Agentes, portão humano, auditoria, golden set F1=0.95 |
-| 3 — Produto | 🔧 Código completo | API FastAPI, drift job, Docker, scripts de deploy; checklist de aceite executado e IAM preparada — falta só o deploy Cloud Run (passo manual) |
+| 2 — Laudo | ✅ Completa | Agentes, portão humano, auditoria; extração F1 0.96, fidedignidade do laudo 100%, baseline de chamada única medido |
+| 3 — Produto | ✅ Em produção (privado) | API no Cloud Run (IAM + X-API-Key no Secret Manager), job de drift semanal; smoke pós-deploy executado |
 
 ## Arquitetura
 
@@ -144,9 +144,44 @@ análise de LGPD (transferência internacional, retenção, uso para treino).
 > (4) Todos raciocinam por padrão (~750–950 tokens de saída por pedido); o custo
 > do Gemini não é medido pelo eval (só o `usage` dos outros provedores).
 
-**Não implementados nesta fase** (ver PLANO §5):
-- Fidedignidade do laudo (% de afirmações com evidência)
-- Verificado vs. declarado (% de campos classificados)
+### Laudo (texto) — `eval/laudo/results/laudo_texto_v1.json`
+
+Multi-agente (Extrator → Pesquisador → Redator) contra o **baseline de chamada
+única** exigido pelo PLANO §5 (texto bruto + PD → laudo, mesmo modelo, regras e
+schema de saída). 38 itens em escopo × 2 rodadas por braço; a PD é a mesma nos dois.
+
+| Métrica (PLANO §5) | Meta | Multi-agente r1 / r2 | Baseline r1 / r2 |
+|---|---|---|---|
+| **Fidedignidade** — afirmações verificáveis com evidência | 100% | **100% / 100%** (2.062) | **100% / 100%** (2.221) |
+| PD citada exatamente | — | 38/38 · 38/38 | 38/38 · 38/38 |
+| **Verificado × declarado** — marcação correta por campo no texto | 100% | 97.4% / **100%** | 94.9% / 94.9% |
+| Classificação estruturada por campo (`fonte_por_campo`) | — | **100%** | 0% (texto livre) |
+| Latência da redação | — | 18.2s / 16.2s | 14.5s / 15.0s |
+
+**Juiz determinístico** (`eval/laudo/fidedignidade.py`, sem LLM): todo número do
+laudo precisa bater com o pedido, a PD ou os fatores (aceita arredondamento,
+truncamento, % e razões entre valores do pedido); todo nome entre crases precisa
+ser fator, campo ou a faixa derivada da PD; toda norma precisa estar no corpus
+e em `evidencias`. Os textos ficam salvos no JSON: `--rejulgar` refaz o
+julgamento sem LLM, e cada correção do juiz foi feita contra esses textos.
+
+**Decisão do PLANO ("multi-agente só se justifica se superar o baseline"):
+multi-agente mantido.** Empatam em fidedignidade; o multi-agente vence em
+verificado × declarado — a métrica do PLANO — por ter classificação estruturada
+por campo (base para o ✅ quando houver consulta de CNPJ) e marcar melhor no
+texto. Custo igual: calcular a PD exige extração estruturada em qualquer
+arquitetura, então os dois fazem 2 chamadas ao LLM por laudo.
+
+> **Ressalvas:**
+> (1) **Achado real:** em 5 dos 152 laudos o Gemini escreveu o símbolo errado no
+> lugar de ⚠️ — ☢, ‱, ‼ e **☑** (este parece "verificado" num dado declarado);
+> 1 no multi-agente, 4 no baseline. Um laudo do baseline marcou em bloco ("todos
+> ⚠️ declarados") e não campo a campo, o que conta como erro pela regra do prompt.
+> (2) O juiz só checa afirmações verificáveis mecanicamente; frases
+> qualitativas ("setor resiliente") não são avaliadas.
+> (3) Nenhum campo é verificado hoje (stub de CNPJ), então ✅ nunca é esperado.
+> (4) O item 9 do golden set é recusado pelo Extrator e não chega ao Redator
+> (38 de 39); o baseline não tem caminho de recusa e não foi testado fora de escopo.
 
 > **Ressalva:** o salto de F1 (0.84 → 0.95) veio de adicionar exemplos de
 > mapeamento `setor→snake_case` no prompt do Extrator. Alguns exemplos são

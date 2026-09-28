@@ -63,6 +63,20 @@ def pedido_para_features(pedido: PedidoCredito) -> dict[str, float]:
     }
 
 
+def montar_resultado_modelo(predicao: ResultadoPredicao) -> ResultadoModelo:
+    """ResultadoModelo do laudo — sem os fatores constantes no serviço."""
+    return ResultadoModelo(
+        pd=predicao.pd,
+        faixa_risco=predicao.faixa_risco,
+        fatores=[
+            (nome, contrib)
+            for nome, contrib in predicao.fatores
+            if nome not in FEATURES_CONSTANTES_NO_SERVICO
+        ],
+        model_version=predicao.model_version,
+    )
+
+
 @dataclass(frozen=True)
 class Recusa:
     motivo: str
@@ -133,16 +147,7 @@ class Pipeline:
         predicao = self._prever_fn(features, project_id=self.project_id, dataset=self.dataset)
         etapas.append({"etapa": "modelo", "timestamp": _agora()})
 
-        resultado = ResultadoModelo(
-            pd=predicao.pd,
-            faixa_risco=predicao.faixa_risco,
-            fatores=[
-                (nome, contrib)
-                for nome, contrib in predicao.fatores
-                if nome not in FEATURES_CONSTANTES_NO_SERVICO
-            ],
-            model_version=predicao.model_version,
-        )
+        resultado = montar_resultado_modelo(predicao)
         redacao = self._redigir_fn(enriquecidos, resultado, project_id=self.project_id)
         etapas.append({"etapa": "redator", "timestamp": _agora()})
 
@@ -172,6 +177,9 @@ class Pipeline:
 
     def obter(self, laudo_id: str) -> dict | None:
         return self._portao.obter(laudo_id)
+
+    def listar(self, limite: int = 20) -> list[dict]:
+        return self._portao.listar(limite)
 
     def decidir(
         self,

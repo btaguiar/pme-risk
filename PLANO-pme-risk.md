@@ -137,11 +137,12 @@ não um modelo pronto para concessão real.
 > - ✅ KS/AUC/Brier/ECE → implementados em `eval/model/run_eval.py`
 > - ✅ Drift (PSI por variável) → implementado em `monitoring/drift_job.py`
 >   (job de Cloud Run + Scheduler semanal via `infra/scripts/deploy_drift.sh`)
-> - ❌ **Fidedignidade** e **Verificado vs. declarado** → **não implementados**
->   nesta fase. O schema do Redator (texto livre + lista plana de evidências)
->   não permite calcular essas métricas automaticamente. Para implementar:
->   (a) Redator estruturaria afirmações individuais com evidência associada,
->   ou (b) juiz separado que parseia o texto do laudo.
+> - ✅ **Fidedignidade** e **Verificado vs. declarado** → implementados em
+>   2026-09-28 pela opção (b): juiz determinístico que parseia o texto do laudo
+>   (`eval/laudo/fidedignidade.py`, runner `eval/laudo/run_eval_laudo.py`).
+>   Fidedignidade 100% nos dois braços; marcação por campo 97.4–100%
+>   (multi-agente) × 94.9% (baseline). Resultados em
+>   `eval/laudo/results/laudo_texto_v1.json`; ressalvas no README.
 
 **Baselines obrigatórios:**
 - **Modelo:** regressão logística simples. Modelo mais complexo só entra se
@@ -150,6 +151,10 @@ não um modelo pronto para concessão real.
 - **Laudo:** uma chamada única ao Gemini (recebe PD + dados, redige o laudo),
   sem agentes. A arquitetura multi-agente só se justifica se superar o baseline
   na matriz acima. Empate técnico = ficar com o baseline e registrar o resultado.
+  → ✅ implementado (`eval/laudo/baseline_chamada_unica.py`, 2026-09-28). Empate
+  em fidedignidade; multi-agente vence em verificado × declarado (classificação
+  estruturada por campo + marcação no texto) com o mesmo número de chamadas —
+  **multi-agente mantido**, decisão registrada no README.
 
 ### Resultados (2026-09-28)
 
@@ -195,7 +200,7 @@ skew treino/serviço — ver README):
 | Fase | Prazo | Entrega | Critério de pronto | Status |
 |---|---|---|---|---|
 | **1 — Modelo** | 3 semanas | Treino no BigQuery ML, baseline logístico, KS/AUC/Brier, versionamento | Métricas do modelo em `eval/`; funciona sozinho | ✅ Completa |
-| **2 — Laudo** | 4 semanas | Extrator + Pesquisador + Redator + portão humano + trilha de auditoria; golden set; baseline de chamada única | Multi-agente supera o baseline (ou decisão registrada) | ✅ Estrutural |
+| **2 — Laudo** | 4 semanas | Extrator + Pesquisador + Redator + portão humano + trilha de auditoria; golden set; baseline de chamada única | Multi-agente supera o baseline (ou decisão registrada) | ✅ Completa — baseline medido, decisão registrada |
 | **3 — Produto** | 3 semanas | Deploy em Cloud Run, job de drift, laudo navegável, README | Demo pública; post LinkedIn com números do eval | 🔧 Código completo; checklist de aceite executado (Docker local, smoke 401/404/201, e2e real, drift, budget); IAM preparada (SA + papéis BQ); falta o deploy |
 
 Se uma fase estourar o prazo, corta-se escopo — não se estende o prazo.
