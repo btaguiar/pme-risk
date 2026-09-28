@@ -360,6 +360,7 @@ de log-based alert do Cloud Monitoring free tier cobre isso.
 |---|---|---|
 | `prazo_meses` opcional | `int \| None` | Nem sempre mencionado no pedido |
 | LLM auth | Vertex AI via ADC | Sem API key, integração GCP nativa |
+| LLM do Extrator | `gemini-2.5-flash` mantido (2026-09-28) | Comparado a qwen3.8-flash/max e deepseek-v4-pro: F1 empatado (≤ 1 ponto), Gemini mais rápido e sem transferência de dados para fora do GCP |
 | Extração `setor` | Seção CNAE 2.0 (enum) | Padrão externo; rótulo livre gerava sinônimos |
 | Extração `finalidade` | `snake_case` normalizado | Consistência para avaliação |
 | `valor_solicitado` obrigatório | Sim | Essencial para análise de crédito |

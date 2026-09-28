@@ -176,6 +176,20 @@ skew treino/serviço — ver README):
 > Ressalvas: notas CNAE do prompt cobrem casos do golden set; `finalidade`
 > (F1 0.86) segue texto livre. Ver README.
 
+**Comparação de modelos no Extrator — `eval/laudo/results/laudo_eval_v6_*.json`**
+(2026-09-28, 2 rodadas por modelo, mesmo prompt e schema; alternativos só no eval):
+
+| Modelo | F1 médio | Latência | Decisão |
+|---|---|---|---|
+| gemini-2.5-flash | 0.9601 | 8.4s | ✅ mantido em produção |
+| qwen3.8-flash | 0.9584 | 15.5s | — |
+| qwen3.8-max | 0.9644 | 25.1s | — |
+| deepseek-v4-pro | 0.9541 | 11.7s | — |
+
+> Empate técnico: diferenças ≤ 1 ponto, dentro da variação entre rodadas.
+> Gemini fica por latência, estabilidade e por estar no GCP (outro provedor em
+> produção exige análise de LGPD). Detalhes e ressalvas no README.
+
 ## 6. Fases (~10 semanas, timebox)
 
 | Fase | Prazo | Entrega | Critério de pronto | Status |
@@ -213,7 +227,7 @@ com o trial — ou seja, nada de dependência de serviço cobrado por hora.
 1. Projeto GCP próprio (separado do quimera), com budget alerts em
    50% / 80% / 100% desde o primeiro dia;
 2. Rodadas de eval com modelo flash; modelos maiores só para comparação pontual,
-   registrada;
+   registrada; → ✅ comparação de 2026-09-28 registrada no §5 e no README;
 3. Vertex AI Pipelines fora do escopo — BigQuery ML cobre treino e inferência.
 
 ## 8. Não fazer
