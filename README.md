@@ -62,38 +62,53 @@ Regra: só números reproduzíveis a partir de `eval/*/results/` (BRIEF.md).
 > **Ressalva:** o Brier mal supera o preditor constante (0.0735 vs 0.0744) — o
 > modelo ordena risco (KS/AUC) melhor do que estima probabilidade absoluta.
 
-### Extração — `eval/laudo/results/laudo_eval_v5.json`
+### Extração — `eval/laudo/results/laudo_eval_v6.json`
 
 | Métrica | Valor | Meta | Status |
 |---|---|---|---|
-| F1 extração (micro, por campo) | 0.9167 (P 0.9267 / R 0.9068) | ≥ 0.90 | ✅ |
-| Alucinação (valor em campo não mencionado) | 0 de 72 casos | — | ✅ |
+| F1 extração (micro, por campo) | 0.9601 (P 0.9707 / R 0.9498) | ≥ 0.90 | ✅ |
+| Alucinação (valor em campo não mencionado) | 0 | — | ✅ |
 | Recusa correta | 100% (11/11) | ≥ 95% | ✅ |
 | Recusa indevida | 2.56% (1/39) | — | ⚠️ |
-| Latência média | 6.54s | — | — |
+| Latência média | 7.23s | — | — |
 
-**Método v5** (`eval/laudo/run_eval.py`, testado em `tests/unit/test_eval_laudo.py`):
+Duas rodadas completas deram o mesmo agregado
+(`laudo_eval_v6.json`, `laudo_eval_v6_rodada2.json`).
+
+| F1 por campo | v5 (setor livre) | v6 (setor CNAE) |
+|---|---|---|
+| porte, UF, anos, faturamento, valor, prazo | 0.987 – 1.0 | 0.987 – 1.0 |
+| `setor` | 0.5974 | **0.9091** |
+| `finalidade` | 0.8571 | 0.8571 |
+| `cnpj` | — | — (nenhum texto tem CNPJ; nenhum inventado) |
+
+**Método** (`eval/laudo/run_eval.py`, testado em `tests/unit/test_eval_laudo.py`):
 os 39 itens em escopo anotam os 9 campos, com `null` = "não mencionado"; valor
 errado conta FP+FN; item que falha ou é recusado por engano fica no
 denominador. Os evals v1–v4 pulavam campos `null` (não viam alucinação),
-excluíam falhas e só avaliavam `faturamento` em 1 item. **Na mesma rodada, o
-método antigo dá 0.9592** — ~4 pontos do F1 anterior eram metodologia.
+excluíam falhas e só avaliavam `faturamento` em 1 item — no v5, o método antigo
+deu 0.9592 contra 0.9167 do novo na mesma rodada.
 
-| F1 por campo | |
-|---|---|
-| porte, UF, anos, faturamento, valor, prazo | 0.987 – 1.0 |
-| `finalidade` | 0.8571 |
-| `setor` | **0.5974** |
-| `cnpj` | — (nenhum texto tem CNPJ; nenhum inventado) |
+**v6 — `setor` com vocabulário fechado:** passou a ser a seção CNAE 2.0
+(`agents/setores.py`, 21 códigos, imposto ao Gemini via `response_schema`); o
+detalhe do negócio vai em `atividade` (livre, usado no laudo, não avaliado). No
+v5 o F1 de `setor` media sinônimos (`varejo_otica` × `varejo_optica`). Os erros
+restantes são de classificação CNAE de fato (padaria → I em vez de C;
+fotografia → R em vez de M; vigilância → S em vez de N).
 
-> **Ressalvas:** (1) quase todo erro é `setor`/`finalidade`, comparados por
-> igualdade exata de rótulo livre — muitos são sinônimos (`varejo_otica` ×
-> `varejo_optica`, `alimentacao_padaria` × `alimentacao_panificadora`). O
-> número mede concordância de vocabulário, não só extração; a correção de fundo
-> é `setor` virar vocabulário fechado (CNAE), não afrouxar a métrica.
-> (2) A recusa indevida é o item 9 ("quero abrir uma empresa") — anotação
-> discutível: empresa sem operação pode ser recusa legítima. Mantido como está
-> para não ajustar o rótulo ao resultado.
+> **Ressalvas:**
+> (1) Tirar o vazamento teste↔prompt revelou uma falha que ele mascarava: o
+> exemplo do prompt era o item 0 do golden set, e sem ele o Extrator recusava
+> pedidos sem porte explícito. A correção foi tornar explícita a regra legal
+> (porte pela receita bruta, LC 123/2006) — regra de domínio, não ajuste por item.
+> (2) As notas CNAE do prompt ("seção G inclui reparação de veículos",
+> "veterinária é M"...) são fatos da classificação, mas cobrem casos do golden
+> set; o F1 de `setor` pode não generalizar igual.
+> (3) Em 5 itens a própria CNAE admite duas seções (ex.: engenharia civil F/M);
+> o golden aceita qualquer uma, decidido pelo texto antes de rodar o eval.
+> (4) `finalidade` segue texto livre e é agora o campo mais fraco.
+> (5) A recusa indevida é o item 9 ("quero abrir uma empresa", sem UF nem
+> porte) — anotação discutível, mantida para não ajustar o rótulo ao resultado.
 
 **Não implementados nesta fase** (ver PLANO §5):
 - Fidedignidade do laudo (% de afirmações com evidência)

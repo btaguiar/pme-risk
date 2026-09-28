@@ -8,7 +8,7 @@ from api.pipeline import LaudoCriado, Pipeline, Recusa
 from api.routes.portao_humano import LaudoJaDecididoError
 
 _PEDIDO = PedidoCredito(
-    setor="saude_odontologica",
+    setor="saude_servicos_sociais",
     porte="ME",
     uf="SP",
     anos_operacao=5,

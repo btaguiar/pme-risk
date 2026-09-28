@@ -52,6 +52,18 @@ class TestGoldenSet:
             for campo in ("setor", "valor_solicitado", "finalidade"):
                 assert esp.get(campo) is not None, f"Item {i}: '{campo}' essencial é None"
 
+    def test_setor_e_secao_cnae(self):
+        from agents.setores import SETORES_CNAE
+
+        for i, item in enumerate(_carregar()):
+            setor = item["esperado"].get("setor")
+            if setor is None:
+                continue
+            aceitos = setor if isinstance(setor, list) else [setor]
+            assert aceitos, f"Item {i}: lista de setores vazia"
+            for s in aceitos:
+                assert s in SETORES_CNAE, f"Item {i}: setor fora da CNAE '{s}'"
+
     def test_porte_valores_validos(self):
         validos = {"MEI", "ME", "EPP"}
         for i, item in enumerate(_carregar()):

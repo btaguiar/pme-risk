@@ -18,7 +18,7 @@ from eval.laudo.run_eval import (
 )
 
 _ESPERADO = {
-    "setor": "saude_odontologia",
+    "setor": "saude_servicos_sociais",
     "porte": "EPP",
     "uf": "SP",
     "anos_operacao": 5,
@@ -68,6 +68,8 @@ class TestClassificarCampo:
             (None, "RJ", ALUCINACAO),
             (None, None, NEGATIVO),
             (5, 5.0, ACERTO),
+            (["construcao", "profissionais_cientificas_tecnicas"], "construcao", ACERTO),
+            (["construcao", "profissionais_cientificas_tecnicas"], "comercio", ERRO_VALOR),
         ],
     )
     def test_classes(self, esperado, obtido, classe):

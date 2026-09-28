@@ -6,11 +6,45 @@
   "properties": {
     "setor": {
       "type": "string",
-      "description": "CNAE ou descrição livre — o Extrator normaliza"
+      "enum": [
+        "agropecuaria",
+        "industria_extrativa",
+        "industria_transformacao",
+        "eletricidade_gas",
+        "agua_esgoto_residuos",
+        "construcao",
+        "comercio",
+        "transporte_armazenagem",
+        "alojamento_alimentacao",
+        "informacao_comunicacao",
+        "financeiro_seguros",
+        "atividades_imobiliarias",
+        "profissionais_cientificas_tecnicas",
+        "administrativas_servicos_complementares",
+        "administracao_publica",
+        "educacao",
+        "saude_servicos_sociais",
+        "artes_cultura_esporte",
+        "outros_servicos",
+        "servicos_domesticos",
+        "organismos_internacionais"
+      ],
+      "description": "Seção CNAE 2.0 da atividade principal (agents/setores.py)"
+    },
+    "atividade": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "description": "Descrição livre do negócio (ex: padaria) — usada no laudo, não avaliada"
     },
     "porte": {
       "type": "string",
-      "enum": ["MEI", "ME", "EPP"],
+      "enum": [
+        "MEI",
+        "ME",
+        "EPP"
+      ],
       "description": "Porte da empresa"
     },
     "uf": {
@@ -34,7 +68,10 @@
       "description": "Valor do crédito solicitado em BRL"
     },
     "prazo_meses": {
-      "type": ["integer", "null"],
+      "type": [
+        "integer",
+        "null"
+      ],
       "minimum": 1,
       "description": "Prazo de pagamento em meses (opcional — nem sempre mencionado)"
     },
@@ -43,7 +80,10 @@
       "description": "Finalidade do crédito (texto livre)"
     },
     "cnpj": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "pattern": "^\\d{14}$",
       "description": "CNPJ — se presente, habilita enriquecimento via quimera-core"
     }

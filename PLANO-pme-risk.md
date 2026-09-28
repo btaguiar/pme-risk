@@ -164,18 +164,17 @@ skew treino/serviço — ver README):
 | ECE | 0.0013 | — | baseline |
 | Holdout | 60.994 amostras | — | — |
 
-**Extração — `eval/laudo/results/laudo_eval_v5.json`** (método v5, ver README):
+**Extração — `eval/laudo/results/laudo_eval_v6.json`** (método v5 + setor CNAE, ver README):
 
 | Métrica | Valor | Meta | Status |
 |---|---|---|---|
-| F1 extração (micro) | 0.9167 | ≥ 0.90 | ✅ |
+| F1 extração (micro) | 0.9601 | ≥ 0.90 | ✅ |
 | Recusa correta | 100% (11/11) | ≥ 0.95 | ✅ |
 | Recusa indevida | 2.56% (1/39) | — | ⚠️ |
-| Latência média | 6.54s | — | — |
+| Latência média | 7.23s | — | — |
 
-> Ressalvas: F1 pode estar inflado por vazamento teste↔ajuste (exemplos no
-> prompt são itens do golden set); `setor` (F1 0.60) é comparado por igualdade
-> exata de rótulo livre. Ver README.
+> Ressalvas: notas CNAE do prompt cobrem casos do golden set; `finalidade`
+> (F1 0.86) segue texto livre. Ver README.
 
 ## 6. Fases (~10 semanas, timebox)
 

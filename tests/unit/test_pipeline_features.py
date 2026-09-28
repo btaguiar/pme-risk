@@ -9,7 +9,7 @@ from model.features import FEATURE_COLUMNS
 
 def _pedido(**overrides: object) -> PedidoCredito:
     base = {
-        "setor": "saude_odontologica",
+        "setor": "saude_servicos_sociais",
         "porte": "ME",
         "uf": "SP",
         "anos_operacao": 5,
@@ -46,6 +46,6 @@ class TestPedidoParaFeatures:
 
     def test_setor_nao_altera_features(self):
         # Setor PME não tem análogo no treino — não pode mexer na PD (feature set v2)
-        f1 = pedido_para_features(_pedido(setor="saude_odontologica"))
-        f2 = pedido_para_features(_pedido(setor="comercio_varejo"))
+        f1 = pedido_para_features(_pedido(setor="saude_servicos_sociais"))
+        f2 = pedido_para_features(_pedido(setor="comercio"))
         assert f1 == f2

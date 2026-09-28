@@ -10,6 +10,9 @@ Método v5 (substitui v1–v4, ver `f1_metodo_v4` no JSON para a ponte):
 - item em escopo que falha ou é recusado por engano conta como omissão de
   todos os campos — não sai do denominador.
 
+v6: `setor` é seção CNAE 2.0 (vocabulário fechado, agents/setores.py);
+`atividade` (texto livre) não é avaliada.
+
 Run: GCP_PROJECT_ID=<projeto> uv run python -m eval.laudo.run_eval
 """
 
@@ -50,12 +53,17 @@ NEGATIVO = "negativo"  # não mencionado e não extraído — não conta
 
 
 def classificar_campo(esperado: object, obtido: object) -> str:
-    """Classifica um campo extraído contra o esperado."""
+    """Classifica um campo extraído contra o esperado.
+
+    Lista no esperado = valores igualmente corretos (ex: setor em que a própria
+    CNAE admite duas seções) — anotados pelo texto, antes de rodar o eval.
+    """
     if esperado is None:
         return NEGATIVO if obtido is None else ALUCINACAO
     if obtido is None:
         return OMISSAO
-    return ACERTO if obtido == esperado else ERRO_VALOR
+    aceitos = esperado if isinstance(esperado, list) else [esperado]
+    return ACERTO if obtido in aceitos else ERRO_VALOR
 
 
 def classificar_item(esperado: dict, obtido: dict | None) -> dict[str, str]:

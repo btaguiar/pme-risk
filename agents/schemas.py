@@ -11,11 +11,16 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from agents.setores import SetorCNAE
+
 
 class PedidoCredito(BaseModel):
     """Pedido de crédito PME — schema da SPEC §3.1."""
 
-    setor: str = Field(description="CNAE ou descrição livre — o Extrator normaliza")
+    setor: SetorCNAE = Field(description="Seção CNAE 2.0 (agents/setores.py)")
+    atividade: str | None = Field(
+        default=None, description="Descrição livre do negócio (ex: padaria) — usada no laudo"
+    )
     porte: Literal["MEI", "ME", "EPP"]
     uf: str = Field(pattern=r"^[A-Z]{2}$", description="UF com 2 letras maiúsculas")
     anos_operacao: float = Field(ge=0, description="Anos de operação")

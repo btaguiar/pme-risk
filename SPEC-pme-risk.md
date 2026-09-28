@@ -109,7 +109,8 @@ Pydantic em `agents/schemas.py`, usado tanto pelo Extrator quanto pela API:
 
 ```json
 {
-  "setor": "string (CNAE ou descrição livre, o Extrator normaliza)",
+  "setor": "enum — seção CNAE 2.0 (agents/setores.py, 21 códigos)",
+  "atividade": "string | null — descrição livre do negócio, usada no laudo",
   "porte": "MEI | ME | EPP",
   "uf": "string (2 letras)",
   "anos_operacao": "number",
@@ -124,7 +125,10 @@ Pydantic em `agents/schemas.py`, usado tanto pelo Extrator quanto pela API:
 **Decisões de implementação (2026-09-27):**
 - `prazo_meses` é opcional (`int | None`) — nem sempre mencionado no pedido
 - `valor_solicitado` e `faturamento_anual_declarado` são obrigatórios
-- `setor` e `finalidade` são normalizados para `snake_case` pelo Extrator
+- `finalidade` é normalizada para `snake_case` pelo Extrator
+- **(2026-09-28)** `setor` virou seção CNAE 2.0 (vocabulário fechado, imposto via
+  `response_schema`); o detalhe vai em `atividade`. Rótulo livre fazia o F1 do
+  campo medir sinônimos (0.60 no eval v5)
 
 ### 3.2 Decisão em aberto: mapeamento de features Home Credit → PME
 
@@ -352,7 +356,8 @@ de log-based alert do Cloud Monitoring free tier cobre isso.
 |---|---|---|
 | `prazo_meses` opcional | `int \| None` | Nem sempre mencionado no pedido |
 | LLM auth | Vertex AI via ADC | Sem API key, integração GCP nativa |
-| Extração `setor`/`finalidade` | `snake_case` normalizado | Consistência para avaliação |
+| Extração `setor` | Seção CNAE 2.0 (enum) | Padrão externo; rótulo livre gerava sinônimos |
+| Extração `finalidade` | `snake_case` normalizado | Consistência para avaliação |
 | `valor_solicitado` obrigatório | Sim | Essencial para análise de crédito |
 | `verificado` no Pesquisador | Só se `cnpj_dados` existe | Stub retorna None → tudo declarado |
 | Boosted tree | `candidate_rejected` | Erro BQML 80038528, baseline promovido |

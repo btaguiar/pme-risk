@@ -1,0 +1,140 @@
+{
+  "metodo": "v5",
+  "parcial": false,
+  "f1_extracao": 0.9601,
+  "precisao": 0.9707,
+  "recall": 0.9498,
+  "f1_macro_por_item": 0.9451,
+  "f1_metodo_v4": 0.9739,
+  "tp": 265,
+  "fp": 8,
+  "fn": 14,
+  "classes": {
+    "acerto": 265,
+    "erro_valor": 8,
+    "negativo": 72,
+    "omissao": 6
+  },
+  "f1_por_campo": {
+    "setor": 0.9091,
+    "porte": 0.987,
+    "uf": 1.0,
+    "anos_operacao": 0.987,
+    "faturamento_anual_declarado": 0.987,
+    "valor_solicitado": 0.987,
+    "prazo_meses": 1.0,
+    "finalidade": 0.8571,
+    "cnpj": null
+  },
+  "taxa_recusa_correta": 1.0,
+  "n_recusas_esperadas": 11,
+  "n_recusas_corretas": 11,
+  "taxa_recusa_indevida": 0.0256,
+  "n_recusas_indevidas": 1,
+  "n_itens": 50,
+  "n_em_escopo": 39,
+  "n_falhas_execucao": 0,
+  "latencia_media_s": 7.23,
+  "custo_estimado_usd": 0.005,
+  "divergencias": [
+    {
+      "indice": 1,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "compra_de_ativo",
+      "obtido": "frota"
+    },
+    {
+      "indice": 9,
+      "campo": "setor",
+      "tipo": "omissao",
+      "esperado": "informacao_comunicacao",
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "porte",
+      "tipo": "omissao",
+      "esperado": "ME",
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "anos_operacao",
+      "tipo": "omissao",
+      "esperado": 0,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "faturamento_anual_declarado",
+      "tipo": "omissao",
+      "esperado": 0,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "valor_solicitado",
+      "tipo": "omissao",
+      "esperado": 100000,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "finalidade",
+      "tipo": "omissao",
+      "esperado": "abertura_de_empresa",
+      "obtido": null
+    },
+    {
+      "indice": 11,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "industria_transformacao",
+      "obtido": "alojamento_alimentacao"
+    },
+    {
+      "indice": 14,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "infraestrutura",
+      "obtido": "expansao"
+    },
+    {
+      "indice": 24,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "profissionais_cientificas_tecnicas",
+      "obtido": "artes_cultura_esporte"
+    },
+    {
+      "indice": 25,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "infraestrutura",
+      "obtido": "construcao"
+    },
+    {
+      "indice": 34,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "projeto",
+      "obtido": "expansao"
+    },
+    {
+      "indice": 39,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "administrativas_servicos_complementares",
+      "obtido": "outros_servicos"
+    },
+    {
+      "indice": 44,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "expansao",
+      "obtido": "modernizacao"
+    }
+  ],
+  "falhas": []
+}
