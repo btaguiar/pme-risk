@@ -44,6 +44,10 @@ def enriquecer(extraidos: DadosExtraidos) -> DadosEnriquecidos:
     Returns:
         DadosEnriquecidos com fonte_por_campo preenchido
     """
+    # Se pedido é None (fora_de_escopo), retorna vazio
+    if extraidos.pedido is None:
+        return DadosEnriquecidos(extraidos=extraidos)
+
     # Determina fonte por campo
     fonte_por_campo: dict[str, Literal["verificado", "declarado"]] = {}
     cnpj_dados = None

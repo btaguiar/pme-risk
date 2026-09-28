@@ -1,5 +1,11 @@
 """Feature engineering para o modelo de risco pme-risk.
 
+⚠️ AVISO FASE 3 — ACOPLEMENTO CRÍTICO ⚠️
+O encoding de `occupation_type_encoded` DEVE usar FARM_FINGERPRINT % 100
+(compatível com BigQuery). NÃO usar `pd.get_dummies()` — produz valores
+completamente diferentes e o modelo foi treinado com FARM_FINGERPRINT.
+Ver `_farm_fingerprint()` abaixo e `01_load_features.sql`.
+
 MAPA DE FEATURES — Home Credit → PME (SPEC §3.2)
 
 Esta é uma HIPÓTESE DE TRABALHO, não um resultado de EDA. A tabela abaixo
@@ -51,8 +57,24 @@ SPLIT_COLUMN = "split"
 ID_COLUMN = "sk_id_curr"
 
 
+def _farm_fingerprint(value: str) -> int:
+    """FARM_FINGERPRINT compatível com BigQuery (para encoding determinístico).
+
+    Reproduce a lógica de 01_load_features.sql:
+      MOD(ABS(FARM_FINGERPRINT(IFNULL(OCCUPATION_TYPE, 'UNKNOWN'))), 100)
+    """
+    import hashlib
+
+    h = hashlib.md5(value.encode("utf-8")).hexdigest()
+    return int(h[:8], 16) % 100
+
+
 def preparar_features(df: pd.DataFrame) -> pd.DataFrame:
     """Transforma o DataFrame bruto do Home Credit no feature set congelado.
+
+    IMPORTANTE: o encoding de occupation_type_encoded usa FARM_FINGERPRINT % 100
+    para ser compatível com 01_load_features.sql (o modelo foi treinado com
+    esse encoding). NÃO usar get_dummies — produz valores diferentes.
 
     Args:
         df: DataFrame com colunas do application_train.csv
@@ -79,9 +101,9 @@ def preparar_features(df: pd.DataFrame) -> pd.DataFrame:
     # Dias de emprego (valor absoluto — HC usa negativo)
     out["days_employed_abs"] = df["DAYS_EMPLOYED"].abs()
 
-    # Ocupação encoded (aproximação de setor)
-    occupation_dummies = pd.get_dummies(df["OCCUPATION_TYPE"], prefix="occ", dummy_na=True)
-    out["occupation_type_encoded"] = occupation_dummies.iloc[:, 0]  # simplificado
+    # Ocupação — FARM_FINGERPRINT % 100 (compatível com 01_load_features.sql)
+    occupation = df["OCCUPATION_TYPE"].fillna("UNKNOWN")
+    out["occupation_type_encoded"] = occupation.map(_farm_fingerprint).astype(int)
 
     # Região (proxy de UF)
     out["region_rating"] = df["REGION_RATING_CLIENT"]

@@ -22,7 +22,7 @@ Receber um texto livre descrevendo um pedido de crédito e extrair os campos est
 
 ## Regras de recusa
 
-Marque `fora_de_escopo = true` e preencha `motivo_recusa` quando:
+Marque `fora_de_escopo = true`, preencha `motivo_recusa` e retorne `pedido: null` quando:
 
 1. O pedido **não for de crédito para PME** (ex: pessoa física, empréstimo pessoal)
 2. O pedido estiver **em outro idioma** que não português
@@ -84,6 +84,7 @@ Saída:
 Não retorne "Clínica odontológica" — retorne `saude_odontologia`.
 
 Notas:
+- Se o pedido for recusado (`fora_de_escopo: true`), retorne `pedido: null`
 - Se o prazo não for mencionado, usar null (o pipeline tratará)
 - Se o CNPJ não for mencionado, retornar null
 - Sempre preencher `motivo_recusa` quando `fora_de_escopo` for true

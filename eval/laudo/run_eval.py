@@ -110,7 +110,7 @@ def executar_golden_set(
         inicio = time.monotonic()
         try:
             obtido = extrair_fn(texto, project_id=project_id)
-            obtido_dict = obtido.pedido.model_dump()
+            obtido_dict = obtido.pedido.model_dump() if obtido.pedido else None
             fora_escopo = obtido.fora_de_escopo
             latencia = time.monotonic() - inicio
         except Exception as e:
@@ -127,9 +127,10 @@ def executar_golden_set(
                 relatorio.n_recusas_esperadas += 1
             continue
 
-        # F1 de extração
-        f1 = calcular_f1_campos(esperado, obtido_dict or {})
-        f1s.append(f1)
+        # F1 de extração (só se obtido_dict existe)
+        if obtido_dict is not None:
+            f1 = calcular_f1_campos(esperado, obtido_dict)
+            f1s.append(f1)
 
         # Recusa
         esperado_fora = esperado.get("fora_de_escopo", False)

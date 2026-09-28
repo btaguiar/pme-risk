@@ -27,9 +27,13 @@ class PedidoCredito(BaseModel):
 
 
 class DadosExtraidos(BaseModel):
-    """Saída do Extrator."""
+    """Saída do Extrator.
 
-    pedido: PedidoCredito
+    Quando fora_de_escopo=True, pedido pode ser None (não há dados estruturados
+    para extrair de um pedido recusado).
+    """
+
+    pedido: PedidoCredito | None = None
     fora_de_escopo: bool = False
     motivo_recusa: str | None = None
 
@@ -37,6 +41,8 @@ class DadosExtraidos(BaseModel):
     def _validar_recusa(self) -> DadosExtraidos:
         if self.fora_de_escopo and not self.motivo_recusa:
             raise ValueError("motivo_recusa obrigatório quando fora_de_escopo=True")
+        if not self.fora_de_escopo and self.pedido is None:
+            raise ValueError("pedido obrigatório quando fora_de_escopo=False")
         return self
 
 
