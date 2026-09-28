@@ -29,11 +29,19 @@ gcloud run jobs update "${JOB}" \
   --args="monitoring/drift_job.py"
 
 # Scheduler precisa invocar o job em nome da service account
-for ROLE in roles/bigquery.dataViewer roles/bigquery.jobUser roles/cloudrun.invoker; do
+# (papéis BQ a nível de projeto; run.invoker a nível do JOB — o projeto
+# rejeita roles/cloudrun.invoker com INVALID_ARGUMENT, testado em 2026-09-27)
+for ROLE in roles/bigquery.dataViewer roles/bigquery.jobUser; do
   gcloud projects add-iam-policy-binding "${PROJECT_ID}" \
     --member="serviceAccount:${SA}" \
     --role="${ROLE}" >/dev/null 2>&1 || true
 done
+
+# Invoker no recurso do job (idempotente) — sem ele o Scheduler recebe 403
+gcloud run jobs add-iam-policy-binding "${JOB}" \
+  --region="${REGION}" \
+  --member="serviceAccount:${SA}" \
+  --role="roles/cloudrun.invoker" >/dev/null
 
 gcloud scheduler jobs create http "${SCHED}" \
   --location="${REGION}" \
