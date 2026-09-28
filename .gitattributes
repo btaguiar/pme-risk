@@ -1,0 +1,3 @@
+# Scripts shell rodam no Cloud Shell/Linux — CRLF quebra `set -euo pipefail`
+*.sh text eol=lf
+infra/scripts/pre-commit text eol=lf

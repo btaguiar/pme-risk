@@ -13,6 +13,11 @@ COPY model/ model/
 COPY monitoring/ monitoring/
 
 ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    PYTHONPATH=/app
+
+# Sem root em runtime — o código só precisa ler /app
+RUN useradd --system --no-create-home app
+USER app
 
 CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]

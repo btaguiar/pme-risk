@@ -1,0 +1,8 @@
+# Build da imagem com o Dockerfile validado localmente (docker/Dockerfile).
+# `gcloud run deploy --source=.` só enxerga Dockerfile na raiz — sem este
+# arquivo o Cloud Build cairia em buildpacks e geraria outra imagem.
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "docker/Dockerfile", "-t", "${_IMAGE}", "."]
+images:
+  - "${_IMAGE}"
