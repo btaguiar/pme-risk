@@ -6,7 +6,7 @@ Tabela: model_registry (criada por infra/scripts/setup_bq.sh)
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import UTC, datetime
 
 from google.cloud import bigquery
 
@@ -55,7 +55,7 @@ class ModelRegistry:
             "model_version": model_version,
             "algoritmo": algoritmo,
             "feature_set_version": feature_set_version,
-            "treinado_em": datetime.utcnow().isoformat(),
+            "treinado_em": datetime.now(UTC).isoformat(),
             "ks": ks,
             "auc": auc,
             "brier": brier,

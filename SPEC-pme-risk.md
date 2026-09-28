@@ -338,6 +338,13 @@ de log-based alert do Cloud Monitoring free tier cobre isso.
   documentado como hipótese em `model/features.py`; validação completa
   requer EDA adicional
 - ~~Terraform vs. scripts `gcloud` (§2)~~ — ✅ scripts `gcloud` (decidido)
+- **EDA do mapeamento Home Credit → PME (§3.2)** — pendente. O mapeamento
+  é hipótese documentada. Uma EDA rápida validando (ou ajustando) fortalece
+  a credibilidade do AUC/KS no README. Não bloqueia.
+- **Boosted tree candidato** — erro BQML 80038528 não investigado. Decisão
+  de ficar no baseline é válida (regra: empate = baseline). Para comparação
+  de modelos no currículo, investigar erro e tentar com hiperparâmetros
+  diferentes. Não bloqueia.
 
 ## 10. Decisões de implementação (2026-09-27)
 
