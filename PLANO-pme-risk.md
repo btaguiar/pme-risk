@@ -135,6 +135,8 @@ não um modelo pronto para concessão real.
 > **Status de implementação (2026-09-27):**
 > - ✅ Extração (F1), Recusa → implementados em `eval/laudo/run_eval.py`
 > - ✅ KS/AUC/Brier/ECE → implementados em `eval/model/run_eval.py`
+> - ✅ Drift (PSI por variável) → implementado em `monitoring/drift_job.py`
+>   (job de Cloud Run + Scheduler semanal via `infra/scripts/deploy_drift.sh`)
 > - ❌ **Fidedignidade** e **Verificado vs. declarado** → **não implementados**
 >   nesta fase. O schema do Redator (texto livre + lista plana de evidências)
 >   não permite calcular essas métricas automaticamente. Para implementar:
@@ -177,8 +179,8 @@ não um modelo pronto para concessão real.
 | Fase | Prazo | Entrega | Critério de pronto | Status |
 |---|---|---|---|---|
 | **1 — Modelo** | 3 semanas | Treino no BigQuery ML, baseline logístico, KS/AUC/Brier, versionamento | Métricas do modelo em `eval/`; funciona sozinho | ✅ Completa |
-| **2 — Laudo** | 4 semanas | Extrator + Pesquisador + Redator + portão humano + trilha de auditoria; golden set; baseline de chamada única | Multi-agente supera o baseline (ou decisão registrada) | 🔧 Estrutural |
-| **3 — Produto** | 3 semanas | Deploy em Cloud Run, job de drift, laudo navegável, README | Demo pública; post LinkedIn com números do eval | ⬜ Não iniciada |
+| **2 — Laudo** | 4 semanas | Extrator + Pesquisador + Redator + portão humano + trilha de auditoria; golden set; baseline de chamada única | Multi-agente supera o baseline (ou decisão registrada) | ✅ Estrutural |
+| **3 — Produto** | 3 semanas | Deploy em Cloud Run, job de drift, laudo navegável, README | Demo pública; post LinkedIn com números do eval | 🔧 Código completo (API, drift, Docker, scripts); e2e verificado; deploy pendente |
 
 Se uma fase estourar o prazo, corta-se escopo — não se estende o prazo.
 Fase 2 aceitável sem três agentes separados, se o baseline empatar.

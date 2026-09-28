@@ -1,6 +1,6 @@
 # Fase 3 — Produto (API, drift, deploy) Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [x]`) syntax for tracking.
 
 **Goal:** Implementar a Fase 3 do pme-risk (SPEC §5): API FastAPI com pipeline completo via adapter, job de drift (PSI), Dockerfile e scripts de deploy Cloud Run — sem tocar em nenhum arquivo da Fase 2.
 
@@ -48,7 +48,7 @@ prever(features: dict[str, float], project_id: str, dataset: str) -> ResultadoPr
 - Create: `api/pipeline.py`
 - Test: `tests/unit/test_pipeline_features.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 """Testes do mapeamento PedidoCredito → features do modelo (SPEC §3.2)."""
@@ -113,12 +113,12 @@ class TestFnv1a:
         assert -(1 << 63) <= h < (1 << 63)
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `uv run pytest tests/unit/test_pipeline_features.py -v`
 Expected: FAIL com `ModuleNotFoundError: No module named 'api.pipeline'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `api/pipeline.py`:
 
@@ -173,12 +173,12 @@ def pedido_para_features(pedido: PedidoCredito) -> dict[str, float]:
     }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `uv run pytest tests/unit/test_pipeline_features.py -v`
 Expected: 8 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add api/pipeline.py tests/unit/test_pipeline_features.py
@@ -193,7 +193,7 @@ git commit -m "feat: mapeamento pedido->features no adapter de pipeline"
 - Modify: `api/pipeline.py`
 - Test: `tests/unit/test_pipeline.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 """Testes do Pipeline — orquestração com fakes, sem GCP."""
@@ -348,12 +348,12 @@ class TestPipelineDecisao:
         assert pipeline.decidir("inexistente", "aprovado", "analista-1") is None
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `uv run pytest tests/unit/test_pipeline.py -v`
 Expected: FAIL com `ImportError: cannot import name 'LaudoCriado'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 Em `api/pipeline.py`: acrescentar os imports abaixo ao TOPO do arquivo (mesclando com os do Task 1, ordem isort: stdlib → third-party → first-party) e o código das classes ao FINAL do arquivo:
 
@@ -505,17 +505,17 @@ def get_pipeline() -> Pipeline:
     )
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `uv run pytest tests/unit/test_pipeline.py -v`
 Expected: 6 passed
 
-- [ ] **Step 5: Run ruff**
+- [x] **Step 5: Run ruff**
 
 Run: `uv run ruff check api/pipeline.py tests/unit/test_pipeline.py`
 Expected: All checks passed (se reclamar de ordem de imports, rodar `uv run ruff check --fix`)
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add api/pipeline.py tests/unit/test_pipeline.py
@@ -531,13 +531,13 @@ git commit -m "feat: Pipeline com injeção de dependências — orquestração 
 - Modify: `pyproject.toml` (dev deps)
 - Test: `tests/unit/test_api.py`
 
-- [ ] **Step 1: Add httpx as dev dependency** (necessário para `TestClient`)
+- [x] **Step 1: Add httpx as dev dependency** (necessário para `TestClient`)
 
 ```bash
 uv add --dev "httpx>=0.27"
 ```
 
-- [ ] **Step 2: Write the failing test**
+- [x] **Step 2: Write the failing test**
 
 ```python
 """Testes das rotas da API com pipeline falso — sem GCP."""
@@ -675,12 +675,12 @@ class TestPatchDecisao:
         assert r.status_code == 404
 ```
 
-- [ ] **Step 3: Run test to verify it fails**
+- [x] **Step 3: Run test to verify it fails**
 
 Run: `uv run pytest tests/unit/test_api.py -v`
 Expected: FAIL com `ModuleNotFoundError: No module named 'api.main'`
 
-- [ ] **Step 4: Write the implementation**
+- [x] **Step 4: Write the implementation**
 
 `api/routes/laudos.py`:
 
@@ -803,17 +803,17 @@ def healthz() -> dict[str, str]:
     return {"status": "ok"}
 ```
 
-- [ ] **Step 5: Run test to verify it passes**
+- [x] **Step 5: Run test to verify it passes**
 
 Run: `uv run pytest tests/unit/test_api.py -v`
 Expected: 8 passed
 
-- [ ] **Step 6: Smoke test local do servidor**
+- [x] **Step 6: Smoke test local do servidor**
 
 Run: `uv run uvicorn api.main:app --port 8000` (em outro terminal) e `curl http://localhost:8000/healthz`
 Expected: `{"status":"ok"}` (interromper o servidor depois)
 
-- [ ] **Step 7: Commit**
+- [x] **Step 7: Commit**
 
 ```bash
 git add api/main.py api/routes/laudos.py api/routes/decisao.py tests/unit/test_api.py pyproject.toml uv.lock
@@ -828,7 +828,7 @@ git commit -m "feat: API FastAPI — POST/GET laudos, portão humano e healthz"
 - Create: `monitoring/drift_job.py`
 - Test: `tests/unit/test_drift.py`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```python
 """Testes do cálculo de PSI — função pura, sem GCP."""
@@ -886,12 +886,12 @@ class TestCalcularDrift:
         assert drift["amt_credit"] == 0.0
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `uv run pytest tests/unit/test_drift.py -v`
 Expected: FAIL com `ModuleNotFoundError: No module named 'monitoring'`
 
-- [ ] **Step 3: Write minimal implementation**
+- [x] **Step 3: Write minimal implementation**
 
 `monitoring/drift_job.py`:
 
@@ -960,12 +960,12 @@ def calcular_drift(
     return {feat: psi(vals, atual.get(feat, [])) for feat, vals in treino.items()}
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `uv run pytest tests/unit/test_drift.py -v`
 Expected: 7 passed
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add monitoring/drift_job.py tests/unit/test_drift.py
@@ -980,7 +980,7 @@ git commit -m "feat: PSI puro com bins por quantis — base do job de drift"
 - Modify: `monitoring/drift_job.py`
 - Modify: `.env.example` (add-only)
 
-- [ ] **Step 1: Implementar leitura do BigQuery e `main`**
+- [x] **Step 1: Implementar leitura do BigQuery e `main`**
 
 Em `monitoring/drift_job.py`: acrescentar `json`, `os`, `sys` ao bloco stdlib de imports no TOPO, `from google.cloud import bigquery` ao bloco third-party (entre stdlib e as constantes), e as funções abaixo ao FINAL do arquivo:
 
@@ -1052,12 +1052,12 @@ if __name__ == "__main__":
     sys.exit(main())
 ```
 
-- [ ] **Step 2: Verificar que os testes existentes continuam passando**
+- [x] **Step 2: Verificar que os testes existentes continuam passando**
 
 Run: `uv run pytest tests/unit/test_drift.py -v`
 Expected: 7 passed (imports de bigquery não quebram sem credenciais — cliente só é criado em `rodar`)
 
-- [ ] **Step 3: Atualizar `.env.example`** (adicionar ao final):
+- [x] **Step 3: Atualizar `.env.example`** (adicionar ao final):
 
 ```
 # Cloud Run / deploy (Fase 3)
@@ -1067,7 +1067,7 @@ RUN_SERVICE_ACCOUNT=
 DRIFT_N_LAUDOS=100
 ```
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add monitoring/drift_job.py .env.example
@@ -1081,7 +1081,7 @@ git commit -m "feat: job de drift lê BigQuery e loga WARNING acima de PSI 0.25"
 **Files:**
 - Create: `docker/Dockerfile`, `.dockerignore`
 
-- [ ] **Step 1: Criar `.dockerignore`** (raiz do repo):
+- [x] **Step 1: Criar `.dockerignore`** (raiz do repo):
 
 ```
 .git
@@ -1098,7 +1098,7 @@ infra/
 .ruff_cache
 ```
 
-- [ ] **Step 2: Criar `docker/Dockerfile`**:
+- [x] **Step 2: Criar `docker/Dockerfile`**:
 
 ```dockerfile
 # API pme-risk — Cloud Run (SPEC §5.2)
@@ -1121,12 +1121,12 @@ ENV PATH="/app/.venv/bin:$PATH" \
 CMD ["sh", "-c", "uvicorn api.main:app --host 0.0.0.0 --port ${PORT:-8080}"]
 ```
 
-- [ ] **Step 3: Smoke test do build** (se Docker estiver disponível localmente)
+- [x] **Step 3: Smoke test do build** (se Docker estiver disponível localmente)
 
 Run: `docker build -f docker/Dockerfile -t pme-risk-api .`
 Expected: build concluído sem erro. Se o Docker não estiver disponível, o build real acontece no `gcloud run deploy --source` (Task 7) — registrar isso e seguir.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add docker/Dockerfile .dockerignore
@@ -1140,7 +1140,7 @@ git commit -m "feat: Dockerfile da API — uv, uvicorn, sem segredos na imagem"
 **Files:**
 - Create: `infra/scripts/deploy_api.sh`, `infra/scripts/deploy_drift.sh`
 
-- [ ] **Step 1: Criar `infra/scripts/deploy_api.sh`**:
+- [x] **Step 1: Criar `infra/scripts/deploy_api.sh`**:
 
 ```bash
 #!/usr/bin/env bash
@@ -1171,7 +1171,7 @@ gcloud run deploy "${SERVICE}" \
   --allow-unauthenticated
 ```
 
-- [ ] **Step 2: Criar `infra/scripts/deploy_drift.sh`**:
+- [x] **Step 2: Criar `infra/scripts/deploy_drift.sh`**:
 
 ```bash
 #!/usr/bin/env bash
@@ -1223,12 +1223,12 @@ gcloud scheduler jobs update http "${SCHED}" \
   --oauth-service-account-email="${SA}"
 ```
 
-- [ ] **Step 3: Verificar sintaxe bash**
+- [x] **Step 3: Verificar sintaxe bash**
 
 Run: `bash -n infra/scripts/deploy_api.sh && bash -n infra/scripts/deploy_drift.sh`
 Expected: sem saída (syntax OK)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add infra/scripts/deploy_api.sh infra/scripts/deploy_drift.sh
@@ -1242,7 +1242,7 @@ git commit -m "feat: scripts de deploy — Cloud Run API, job de drift e schedul
 **Files:**
 - Create: `tests/integration/test_pipeline_e2e.py`
 
-- [ ] **Step 1: Write the integration test (skipped sem GCP)**
+- [x] **Step 1: Write the integration test (skipped sem GCP)**
 
 ```python
 """Teste de integração — pipeline real, exige ADC + GCP_PROJECT_ID.
@@ -1280,17 +1280,17 @@ def test_gerar_laudo_ponta_a_ponta() -> None:
     assert row is not None and row["status"] == "pendente"
 ```
 
-- [ ] **Step 2: Rodar suíte completa (unit) + ruff**
+- [x] **Step 2: Rodar suíte completa (unit) + ruff**
 
 Run: `uv run pytest tests/unit -v && uv run ruff check .`
 Expected: todos passed, ruff limpo
 
-- [ ] **Step 3: Rodar integração (se ADC disponível)**
+- [x] **Step 3: Rodar integração (se ADC disponível)**
 
 Run: `$env:GCP_PROJECT_ID="<projeto>"; uv run pytest tests/integration -v` (PowerShell)
 Expected: 1 passed (ou SKIPPED sem credenciais — deixar para o momento do deploy)
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add tests/integration/test_pipeline_e2e.py
@@ -1301,11 +1301,11 @@ git commit -m "test: integração ponta a ponta do pipeline (skip sem GCP_PROJEC
 
 ## Verificação final (critério de pronto do spec)
 
-- [ ] `uv run pytest tests/unit` — tudo passa sem GCP
-- [ ] `uv run ruff check .` — limpo
-- [ ] `uvicorn api.main:app` sobe e `GET /healthz` responde `{"status":"ok"}`
-- [ ] Nenhum arquivo da Fase 2 modificado: `git diff --name-only main..HEAD` não contém `agents/`, `api/routes/portao_humano.py`, `api/auditoria.py`, `tests/unit/test_schemas.py`, `README.md`
-- [ ] Deploy real (`deploy_api.sh`) fica como passo manual do desenvolvedor — exige `gcloud` autenticado e service account criada no console
+- [x] `uv run pytest tests/unit` — tudo passa sem GCP
+- [x] `uv run ruff check .` — limpo
+- [x] `uvicorn api.main:app` sobe e `GET /healthz` responde `{"status":"ok"}`
+- [x] Nenhum arquivo da Fase 2 modificado: `git diff --name-only main..HEAD` não contém `agents/`, `api/routes/portao_humano.py`, `api/auditoria.py`, `tests/unit/test_schemas.py`, `README.md`
+- [x] Deploy real (`deploy_api.sh`) fica como passo manual do desenvolvedor — exige `gcloud` autenticado e service account criada no console
 
 ## Riscos conhecidos
 

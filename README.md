@@ -11,7 +11,7 @@ aprova ou rejeita antes do laudo final.
 |---|---|---|
 | 1 — Modelo | ✅ Completa | LOGISTIC_REG em produção, métricas em `eval/model/results/` |
 | 2 — Laudo | ✅ Estrutural | Agentes, portão humano, auditoria, golden set F1=0.95 |
-| 3 — Produto | 🔧 Em andamento | Deploy Cloud Run, drift job, demo |
+| 3 — Produto | 🔧 Código completo | API FastAPI, drift job, Docker, scripts de deploy; e2e verificado — deploy Cloud Run pendente (passo manual) |
 
 ## Arquitetura
 
@@ -77,6 +77,62 @@ Regra: só números reproduzíveis a partir de `eval/*/results/` (BRIEF.md).
 - `pd` vem SEMPRE do modelo, nunca do LLM
 - O mapeamento de features Home Credit → PME é hipótese documentada em `model/features.py`
 
+## API (produto)
+
+`api/main.py` — FastAPI com rotas finas; a orquestração vive no adapter
+`api/pipeline.py` (único ponto de contato com os agentes da Fase 2).
+
+| Método | Rota | Função |
+|---|---|---|
+| `GET` | `/healthz` | liveness |
+| `POST` | `/laudos` | roda o pipeline completo; laudo nasce `pendente` |
+| `GET` | `/laudos/{laudo_id}` | laudo aninhado (enriquecidos, modelo, texto, evidências) |
+| `PATCH` | `/laudos/{laudo_id}/decisao` | portão humano: `aprovado` / `corrigido` / `rejeitado` |
+
+```bash
+# Servidor local (requer GCP_PROJECT_ID + ADC para o pipeline real)
+uv run uvicorn api.main:app --port 8000
+
+curl http://localhost:8000/healthz
+
+curl -X POST http://localhost:8000/laudos \
+  -H "Content-Type: application/json" \
+  -d '{"texto": "Clínica odontológica em SP, ME, 5 anos de operação, faturamento R$ 2.000.000, solicita R$ 300.000 para expansão."}'
+
+curl -X PATCH http://localhost:8000/laudos/<laudo_id>/decisao \
+  -H "Content-Type: application/json" \
+  -d '{"decisao": "aprovado", "decidido_por": "analista-1"}'
+```
+
+Pedidos fora de escopo (ex.: pessoa física) retornam `422` com
+`{"detail": {"motivo_recusa": ...}}` — e a recusa entra na trilha de auditoria.
+
+## Monitoramento (drift)
+
+`monitoring/drift_job.py` compara as features numéricas dos últimos laudos
+contra a distribuição de treino (PSI por quantis). Acima de 0.25 → log
+`WARNING` (log-based alert do free tier).
+
+```bash
+# Local (requer ADC + GCP_PROJECT_ID)
+uv run python monitoring/drift_job.py
+```
+
+No Cloud Run, roda como Job disparado por Cloud Scheduler semanal
+(`infra/scripts/deploy_drift.sh`). Categóricas (porte, UF, setor) ficam de
+fora: sem análogo honesto no Home Credit (limite documentado).
+
+## Deploy (passo manual)
+
+O build é validado localmente (`docker build -f docker/Dockerfile -t pme-risk-api .`),
+mas o deploy real exige `gcloud` autenticado e service account criada no console:
+
+```bash
+export GCP_PROJECT_ID=... RUN_SERVICE_ACCOUNT=...
+bash infra/scripts/deploy_api.sh     # API no Cloud Run (--allow-unauthenticated p/ demo)
+bash infra/scripts/deploy_drift.sh   # Job de drift + Scheduler semanal
+```
+
 ## Stack
 
 | Camada | Escolha |
@@ -85,8 +141,9 @@ Regra: só números reproduzíveis a partir de `eval/*/results/` (BRIEF.md).
 | Modelo | BigQuery ML (LOGISTIC_REG) |
 | LLM | Vertex AI — Gemini 2.5 Flash (ADC, sem API key) |
 | Storage | BigQuery (features, models, laudos, auditoria) |
-| API | FastAPI (Fase 3) |
-| Deploy | Cloud Run (Fase 3) |
+| API | FastAPI (`api/`, `uvicorn`) |
+| Deploy | Cloud Run (`infra/scripts/deploy_*.sh`, passo manual) |
+| Monitoramento | PSI via Cloud Run Job + Scheduler semanal |
 
 ## Desenvolvimento
 
@@ -95,7 +152,11 @@ Regra: só números reproduzíveis a partir de `eval/*/results/` (BRIEF.md).
 uv sync
 
 # Testes
-uv run pytest tests/unit/
+uv run pytest tests/unit/            # sem GCP (fakes)
+GCP_PROJECT_ID=<seu-projeto> uv run pytest tests/integration/  # pipeline real (custa Gemini + BQ)
+
+# API local
+uv run uvicorn api.main:app --port 8000
 
 # Lint
 uv run ruff check .
@@ -119,12 +180,14 @@ em `.git/hooks/pre-commit`. Não precisa lembrar de rodar manualmente.
 ```
 pme-risk/
 ├── agents/          # Extrator, Pesquisador, Redator
-├── api/             # Portão humano, auditoria
+├── api/             # main.py (rotas), pipeline.py (adapter), portão humano, auditoria
 ├── data/            # golden_set (sintético), schemas
+├── docker/          # Dockerfile da API (Cloud Run)
 ├── eval/            # run_eval.py + results/ (fonte de verdade p/ métricas)
-├── infra/           # scripts gcloud, budget-alerts
+├── infra/           # scripts gcloud (deploy, secrets), budget-alerts
 ├── model/           # features, registry, predict, SQL
-├── tests/           # unit tests
+├── monitoring/      # drift_job.py (PSI)
+├── tests/           # unit (sem GCP) + integration (pipeline real)
 ├── BRIEF.md         # regras: número sem fonte, dado privado
 ├── PLANO-pme-risk.md
 └── SPEC-pme-risk.md
