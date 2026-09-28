@@ -35,3 +35,8 @@ known-first-party = ["model", "agents", "api", "eval"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.27",
+]
