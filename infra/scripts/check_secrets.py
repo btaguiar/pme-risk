@@ -7,21 +7,40 @@ Cross-platform (funciona em Windows, Linux, macOS).
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 from pathlib import Path
 
-PATTERNS = [
-    "<seu-projeto-gcp>",
-    "<projeto-quimera>",
-    "<projeto-grifo>",
-    "KGAT_",
-    "AIza",
-    "ya29.",
-]
+# Prefixos genéricos de credenciais (Kaggle, Google API key, OAuth token)
+GENERIC_PATTERNS = ["KGAT_", "AIza", "ya29."]
 
-SKIP_FILES = {"check_secrets.py", "check_secrets.sh", "pre-commit"}
-SKIP_DIRS = {".git", ".venv", "eval", ".worktrees", "node_modules"}
+# IDs de projeto NÃO ficam neste arquivo (ele é versionado — listá-los aqui
+# seria o próprio vazamento). Vêm de fontes locais, fora do git:
+#   - GCP_PROJECT_ID do ambiente ou do .env
+#   - infra/scripts/secret_patterns.local (um padrão por linha, gitignored)
+LOCAL_PATTERNS_FILE = Path(__file__).parent / "secret_patterns.local"
+
+SKIP_FILES = {"check_secrets.py"}
+SKIP_DIRS = {".git", ".venv", ".worktrees", "node_modules"}
+
+
+def _load_patterns(root: Path) -> list[str]:
+    patterns = list(GENERIC_PATTERNS)
+    project_id = os.environ.get("GCP_PROJECT_ID", "")
+    env_file = root / ".env"
+    if not project_id and env_file.is_file():
+        for line in env_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if line.startswith("GCP_PROJECT_ID="):
+                project_id = line.split("=", 1)[1].strip().strip("\"'")
+    if project_id:
+        patterns.append(project_id)
+    if LOCAL_PATTERNS_FILE.is_file():
+        for line in LOCAL_PATTERNS_FILE.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                patterns.append(line)
+    return list(dict.fromkeys(patterns))
 
 
 def _get_tracked_files() -> list[Path]:
@@ -51,6 +70,7 @@ def main() -> int:
     root = Path(__file__).parent.parent.parent
 
     files = _get_tracked_files()
+    patterns = _load_patterns(root)
     fail = False
 
     for filepath in files:
@@ -79,9 +99,11 @@ def main() -> int:
         if text is None:
             continue
 
-        for pattern in PATTERNS:
+        for pattern in patterns:
             if pattern in text:
-                print(f"ERRO: padrao '{pattern}' encontrado em: {rel}")
+                # Não ecoa padrões locais — o log do hook também é "material"
+                shown = pattern if pattern in GENERIC_PATTERNS else "<id-de-projeto>"
+                print(f"ERRO: padrao '{shown}' encontrado em: {rel}")
                 fail = True
 
     if fail:

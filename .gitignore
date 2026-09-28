@@ -37,3 +37,6 @@ Thumbs.db
 !eval/*/results/*.json
 credentials/
 service-account*.json
+
+# Padrões locais do scanner de segredos (IDs de projeto — nunca versionar)
+infra/scripts/secret_patterns.local
