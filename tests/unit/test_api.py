@@ -132,3 +132,47 @@ class TestPatchDecisao:
             json={"decisao": "aprovado", "decidido_por": "analista-1"},
         )
         assert r.status_code == 404
+
+
+class TestApiKey:
+    """POST /laudos exige X-API-Key quando API_KEY_SECRET está definido (demo pública)."""
+
+    def test_sem_env_endereco_aberto(self, client, monkeypatch):
+        monkeypatch.delenv("API_KEY_SECRET", raising=False)
+        response, _ = client
+        r = response.post("/laudos", json={"texto": "clínica odontológica quer crédito"})
+        assert r.status_code == 201
+
+    def test_com_env_sem_key_401(self, client, monkeypatch):
+        monkeypatch.setenv("API_KEY_SECRET", "s3gredo-demo")
+        response, _ = client
+        r = response.post("/laudos", json={"texto": "clínica odontológica quer crédito"})
+        assert r.status_code == 401
+
+    def test_com_env_key_errada_401(self, client, monkeypatch):
+        monkeypatch.setenv("API_KEY_SECRET", "s3gredo-demo")
+        response, _ = client
+        r = response.post(
+            "/laudos",
+            json={"texto": "clínica odontológica quer crédito"},
+            headers={"X-API-Key": "errada"},
+        )
+        assert r.status_code == 401
+
+    def test_com_env_key_certa_201(self, client, monkeypatch):
+        monkeypatch.setenv("API_KEY_SECRET", "s3gredo-demo")
+        response, fake = client
+        r = response.post(
+            "/laudos",
+            json={"texto": "clínica odontológica quer crédito"},
+            headers={"X-API-Key": "s3gredo-demo"},
+        )
+        assert r.status_code == 201
+        assert fake.laudos["id-1"]["status"] == "pendente"
+
+    def test_get_continua_aberto_com_env(self, client, monkeypatch):
+        monkeypatch.setenv("API_KEY_SECRET", "s3gredo-demo")
+        response, fake = client
+        fake.gerar("clínica odontológica quer crédito de expansão")
+        r = response.get("/laudos/id-1")
+        assert r.status_code == 200

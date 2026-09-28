@@ -107,6 +107,14 @@ curl -X PATCH http://localhost:8000/laudos/<laudo_id>/decisao \
 Pedidos fora de escopo (ex.: pessoa física) retornam `422` com
 `{"detail": {"motivo_recusa": ...}}` — e a recusa entra na trilha de auditoria.
 
+**Proteção da demo:** com a env var `API_KEY_SECRET` definida (o
+`deploy_api.sh` a exige), `POST /laudos` requer header `X-API-Key` com o
+mesmo valor — sem ela responde `401`. Sem a var definida (dev local), o
+endpoint fica aberto. `GET`/`PATCH` seguem abertos para navegação da demo.
+
+**Corte de escopo deliberado (SPEC §5.1):** o laudo final é **só JSON** —
+não há endpoint de HTML/PDF nesta fase.
+
 ## Monitoramento (drift)
 
 `monitoring/drift_job.py` compara as features numéricas dos últimos laudos
