@@ -159,9 +159,11 @@ Pedidos fora de escopo (ex.: pessoa física) retornam `422` com
 `{"detail": {"motivo_recusa": ...}}` — e a recusa entra na trilha de auditoria.
 
 **Proteção:** o deploy é **privado por padrão** (Cloud Run IAM — exige
-`Authorization: Bearer $(gcloud auth print-identity-token)`). Além disso, com
-`API_KEY_SECRET` definida (o `deploy_api.sh` a exige), `POST /laudos` requer
-header `X-API-Key` — sem ela responde `401`. Sem a var (dev local), fica aberto.
+`Authorization: Bearer $(gcloud auth print-identity-token)`). Além disso,
+`POST /laudos` requer header `X-API-Key` — sem ela responde `401`. No Cloud Run a
+chave vem do **Secret Manager** (`pme-risk-api-key`, lido só pela SA da API) e
+nunca aparece em `gcloud run services describe`; o código lê a env var
+`API_KEY_SECRET` e não sabe a diferença. Sem a var (dev local), fica aberto.
 
 **Portão humano:** decisões são finais — decidir um laudo que já saiu de
 `pendente` responde `409`. Cada decisão entra na `trilha_auditoria`
@@ -207,13 +209,19 @@ smoke 401/404/201 e integração e2e contra GCP real). O deploy exige:
 > Antes do deploy real, opcionalmente rode o e2e inteiro como a SA:
 > `gcloud auth application-default login --impersonate-service-account=$RUN_SERVICE_ACCOUNT`
 > e `GCP_PROJECT_ID=<proj> uv run pytest tests/integration -v` (restaura o ADC depois).
-| `API_KEY_SECRET` | segredo do header `X-API-Key` (obrigatório — fail-closed) |
+| `API_KEY_SECRET` | chave do header `X-API-Key` — cria o segredo `pme-risk-api-key` na 1ª vez; se diferir da versão atual, **rotaciona** (nova versão). Opcional depois que o segredo existe; sem segredo e sem a var o deploy falha (fail-closed) |
 
 ```bash
 export GCP_PROJECT_ID=... RUN_SERVICE_ACCOUNT=... API_KEY_SECRET=...
 bash infra/scripts/deploy_api.sh     # API no Cloud Run, privada (ALLOW_UNAUTHENTICATED=1 p/ demo pública)
 bash infra/scripts/deploy_drift.sh   # Job de drift + Scheduler semanal
 ```
+
+**Rotação da chave:** troque `API_KEY_SECRET` e rode `deploy_api.sh` — ele adiciona
+a versão e publica uma revisão nova. Desative a versão antiga em seguida
+(`gcloud secrets versions disable <n> --secret=pme-risk-api-key`). Revisões
+anteriores a 2026-09-28 tinham a chave em texto puro; ela foi rotacionada e a
+versão antiga desativada.
 
 Pós-deploy: repetir o smoke com `Authorization: Bearer $(gcloud auth print-identity-token)` (`/health`, `401` sem key, `404` em
 `PATCH /laudos/id-inexistente/decisao`, `201` com key, `409` ao re-decidir) contra a URL do serviço.

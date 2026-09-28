@@ -292,9 +292,13 @@ física pedindo empréstimo, ou pedido em outro idioma).
 
 ### 5.2 Deploy
 
-`docker/Dockerfile` (uvicorn + FastAPI), build via Cloud Build ou `gcloud run deploy --source`,
-variáveis sensíveis via Secret Manager (nunca em `.env` commitado — só
-`.env.example` com nomes).
+`docker/Dockerfile` (uvicorn + FastAPI), build via Cloud Build (`infra/cloudbuild.yaml`)
+ou local + push no Artifact Registry, variáveis sensíveis via Secret Manager
+(nunca em `.env` commitado — só `.env.example` com nomes).
+
+**Implementado (2026-09-28):** `API_KEY_SECRET` vem do segredo `pme-risk-api-key`
+via `--set-secrets` (antes ia em `--set-env-vars`, legível na descrição do
+serviço); `secretAccessor` só no segredo, para a SA da API.
 
 ### 5.3 Job de drift
 
