@@ -48,13 +48,18 @@ Trilha de auditoria (append-only)
 | ECE | 0.0011 |
 | Amostras holdout | 60.994 |
 
-### Extração (eval/laudo/results/laudo_eval_v2.json)
+### Extração (eval/laudo/results/laudo_eval_v3.json)
 
 | Métrica | Valor | Meta |
 |---|---|---|
-| F1 extração | 0.9557 | ≥ 0.90 ✅ |
-| Recusa correta | 100% (10/10) | ≥ 95% ✅ |
-| Latência média | 6.3s | — |
+| F1 extração | 0.9539 | ≥ 0.90 ✅ |
+| Recusa correta | 90.91% (10/11) | ≥ 95% ⚠️ |
+| Latência média | 5.73s | — |
+
+> **Ressalva:** o salto de F1 (0.84 → 0.95) veio de adicionar exemplos de
+> mapeamento `setor→snake_case` no prompt do Extrator. Alguns exemplos são
+> literalmente itens do golden set — há vazamento teste↔ajuste. O F1 medido
+> provavelmente não generaliza tão bem para setores fora da lista de exemplos.
 
 ## Stack
 

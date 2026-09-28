@@ -151,12 +151,15 @@ não um modelo pronto para concessão real.
 | Brier | 0.0735 | — | baseline |
 | ECE | 0.0011 | — | baseline |
 
-**Extração — `eval/laudo/results/laudo_eval_v2.json`:**
+**Extração — `eval/laudo/results/laudo_eval_v3.json`:**
 
 | Métrica | Valor | Meta | Status |
 |---|---|---|---|
-| F1 extração | 0.9557 | ≥ 0.90 | ✅ |
-| Recusa correta | 100% (10/10) | ≥ 0.95 | ✅ |
+| F1 extração | 0.9539 | ≥ 0.90 | ✅ |
+| Recusa correta | 90.91% (10/11) | ≥ 0.95 | ⚠️ |
+
+> Ressalva: F1 pode estar inflado por vazamento teste↔ajuste (exemplos no
+> prompt são itens do golden set). Ver README.
 
 ## 6. Fases (~10 semanas, timebox)
 

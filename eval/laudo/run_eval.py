@@ -122,6 +122,9 @@ def executar_golden_set(
                     indice=i, texto=texto, esperado=esperado, erro=str(e), latencia_s=latencia
                 )
             )
+            # Conta recusa mesmo em erro (esperado pode ser fora_de_escopo)
+            if esperado.get("fora_de_escopo", False):
+                relatorio.n_recusas_esperadas += 1
             continue
 
         # F1 de extração

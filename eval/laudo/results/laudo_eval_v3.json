@@ -1,0 +1,9 @@
+{
+  "f1_extracao": 0.9539,
+  "taxa_recusa_correta": 0.9091,
+  "n_itens": 50,
+  "n_recusas_esperadas": 11,
+  "n_recusas_corretas": 10,
+  "latencia_media_s": 5.73,
+  "custo_estimado_usd": 0.005
+}
