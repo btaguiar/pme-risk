@@ -150,6 +150,7 @@ não um modelo pronto para concessão real.
 | AUC | 0.6156 | — | baseline |
 | Brier | 0.0735 | — | baseline |
 | ECE | 0.0011 | — | baseline |
+| Holdout | 60.994 amostras | — | — |
 
 **Extração — `eval/laudo/results/laudo_eval_v3.json`:**
 
@@ -157,6 +158,7 @@ não um modelo pronto para concessão real.
 |---|---|---|---|
 | F1 extração | 0.9539 | ≥ 0.90 | ✅ |
 | Recusa correta | 90.91% (10/11) | ≥ 0.95 | ⚠️ |
+| Latência média | 5.73s | — | — |
 
 > Ressalva: F1 pode estar inflado por vazamento teste↔ajuste (exemplos no
 > prompt são itens do golden set). Ver README.

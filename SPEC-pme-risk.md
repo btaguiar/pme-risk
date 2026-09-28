@@ -349,3 +349,15 @@ de log-based alert do Cloud Monitoring free tier cobre isso.
 | `valor_solicitado` obrigatório | Sim | Essencial para análise de crédito |
 | `verificado` no Pesquisador | Só se `cnpj_dados` existe | Stub retorna None → tudo declarado |
 | Boosted tree | `candidate_rejected` | Erro BQML 80038528, baseline promovido |
+| Check de credenciais | `infra/scripts/check_secrets.sh` | Previne vazamento de IDs (3ª reincidência) |
+| Eval harness | Conta recusa mesmo em erro | Item que falha validação não pode pular contagem |
+
+## 11. Ferramentas de qualidade
+
+| Ferramenta | Comando | Propósito |
+|---|---|---|
+| Lint | `uv run ruff check .` | Padrões de código |
+| Testes | `uv run pytest tests/unit/` | Contratos, frozen, validação |
+| Credenciais | `bash infra/scripts/check_secrets.sh` | Previne vazamento de IDs/keys |
+| Eval modelo | `uv run python eval/model/run_eval.py` | KS/AUC/Brier/ECE |
+| Eval extração | `uv run python eval/laudo/run_eval.py` | F1, recusa, latência |
