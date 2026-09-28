@@ -9,7 +9,23 @@ model/features.py (SPEC §3.2) — proxy, não paridade com Home Credit.
 
 from __future__ import annotations
 
-from agents.schemas import PedidoCredito
+import json
+import os
+import uuid
+from collections.abc import Callable
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from functools import lru_cache
+
+from agents.extractor.extractor import PROMPT_PATH as _EXTRACTOR_PROMPT_PATH
+from agents.extractor.extractor import extrair
+from agents.pesquisador.pesquisador import enriquecer
+from agents.redator.redator import PROMPT_PATH as _REDACTOR_PROMPT_PATH
+from agents.redator.redator import ResultadoRedacao, redigir
+from agents.schemas import DadosEnriquecidos, DadosExtraidos, PedidoCredito, ResultadoModelo
+from api.auditoria import TrilhaAuditoria
+from api.routes.portao_humano import PortaoHumano
+from model.predict import ResultadoPredicao, prever
 
 # Proxy neutro de UF → region_rating. 2 é a moda de REGION_RATING_CLIENT.
 # Sem inventar risco por UF (SPEC §3.2: "não geografia real").
@@ -46,3 +62,126 @@ def pedido_para_features(pedido: PedidoCredito) -> dict[str, float]:
         "occupation_type_encoded": float(abs(_fnv1a_64_signed(pedido.setor)) % 100),
         "region_rating": float(_REGION_RATING_DEFAULT),
     }
+
+
+@dataclass(frozen=True)
+class Recusa:
+    motivo: str
+
+
+@dataclass(frozen=True)
+class LaudoCriado:
+    laudo_id: str
+    status: str = "pendente"
+
+
+def _hashes_prompt() -> dict[str, str]:
+    return {
+        "extrator": TrilhaAuditoria.hash_prompt(_EXTRACTOR_PROMPT_PATH.read_text(encoding="utf-8")),
+        "redator": TrilhaAuditoria.hash_prompt(_REDACTOR_PROMPT_PATH.read_text(encoding="utf-8")),
+    }
+
+
+class Pipeline:
+    """Orquestra extrator → pesquisador → modelo → redator + persistência.
+
+    Callables e clientes são injetáveis para testes sem GCP.
+    """
+
+    def __init__(
+        self,
+        project_id: str,
+        dataset: str,
+        *,
+        extrair_fn: Callable[..., DadosExtraidos] = extrair,
+        enriquecer_fn: Callable[[DadosExtraidos], DadosEnriquecidos] = enriquecer,
+        prever_fn: Callable[..., ResultadoPredicao] = prever,
+        redigir_fn: Callable[..., ResultadoRedacao] = redigir,
+        portao: PortaoHumano | None = None,
+        auditoria: TrilhaAuditoria | None = None,
+    ) -> None:
+        self.project_id = project_id
+        self.dataset = dataset
+        self._extrair_fn = extrair_fn
+        self._enriquecer_fn = enriquecer_fn
+        self._prever_fn = prever_fn
+        self._redigir_fn = redigir_fn
+        self._portao = portao or PortaoHumano(project_id, dataset)
+        self._auditoria = auditoria or TrilhaAuditoria(project_id, dataset)
+
+    def gerar(self, texto: str) -> LaudoCriado | Recusa:
+        """Roda o pipeline completo até `status='pendente'` (SPEC §5.1)."""
+        etapas: list[dict[str, str]] = []
+        extraidos = self._extrair_fn(texto)
+        etapas.append({"etapa": "extrator", "timestamp": _agora()})
+
+        if extraidos.fora_de_escopo:
+            self._auditoria.registrar(
+                laudo_id="-",
+                pedido_bruto=texto,
+                model_version=None,
+                prompts_usados=_hashes_prompt(),
+                decisao_humana=None,
+                etapas=etapas,
+            )
+            return Recusa(motivo=extraidos.motivo_recusa or "fora de escopo")
+
+        enriquecidos = self._enriquecer_fn(extraidos)
+        etapas.append({"etapa": "pesquisador", "timestamp": _agora()})
+
+        features = pedido_para_features(enriquecidos.extraidos.pedido)
+        predicao = self._prever_fn(features, project_id=self.project_id, dataset=self.dataset)
+        etapas.append({"etapa": "modelo", "timestamp": _agora()})
+
+        resultado = ResultadoModelo(
+            pd=predicao.pd,
+            faixa_risco=predicao.faixa_risco,
+            fatores=[(nome, contrib) for nome, contrib in predicao.fatores],
+            model_version=predicao.model_version,
+        )
+        redacao = self._redigir_fn(enriquecidos, resultado, project_id=self.project_id)
+        etapas.append({"etapa": "redator", "timestamp": _agora()})
+
+        laudo_id = str(uuid.uuid4())
+        self._portao.criar(
+            laudo_id=laudo_id,
+            pedido_bruto=texto,
+            enriquecidos_json=enriquecidos.model_dump_json(),
+            resultado_modelo_json=resultado.model_dump_json(),
+            texto=redacao.texto,
+            evidencias_json=json.dumps(redacao.evidencias, ensure_ascii=False),
+        )
+        self._auditoria.registrar(
+            laudo_id=laudo_id,
+            pedido_bruto=texto,
+            model_version=predicao.model_version,
+            prompts_usados=_hashes_prompt(),
+            decisao_humana=None,
+            etapas=etapas,
+        )
+        return LaudoCriado(laudo_id=laudo_id)
+
+    def obter(self, laudo_id: str) -> dict | None:
+        return self._portao.obter(laudo_id)
+
+    def decidir(
+        self,
+        laudo_id: str,
+        decisao: str,
+        decidido_por: str,
+        observacao: str | None = None,
+    ) -> dict | None:
+        return self._portao.decidir(laudo_id, decisao, decidido_por, observacao)
+
+
+def _agora() -> str:
+    return datetime.now(UTC).isoformat()
+
+
+@lru_cache
+def get_pipeline() -> Pipeline:
+    """Dependência FastAPI — instância real (GCP) para produção."""
+    return Pipeline(
+        os.environ["GCP_PROJECT_ID"],
+        os.environ.get("BQ_DATASET", "pme_risk"),
+    )
