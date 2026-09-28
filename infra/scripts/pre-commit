@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Pre-commit hook: previne vazamento de credenciais (BRIEF.md)
+set -e
+python "$(git rev-parse --show-toplevel)/infra/scripts/check_secrets.py"

@@ -130,6 +130,15 @@ não um modelo pronto para concessão real.
 | Verificado vs. declarado | % de campos classificados corretamente | 100% |
 | Recusa correta | % de pedidos fora de escopo recusados | ≥ 0,95 |
 | Drift | **PSI** por variável, entrada vs. treino | alerta se PSI > 0,25 |
+
+> **Status de implementação (2026-09-27):**
+> - ✅ Extração (F1), Recusa → implementados em `eval/laudo/run_eval.py`
+> - ✅ KS/AUC/Brier/ECE → implementados em `eval/model/run_eval.py`
+> - ❌ **Fidedignidade** e **Verificado vs. declarado** → **não implementados**
+>   nesta fase. O schema do Redator (texto livre + lista plana de evidências)
+>   não permite calcular essas métricas automaticamente. Para implementar:
+>   (a) Redator estruturaria afirmações individuais com evidência associada,
+>   ou (b) juiz separado que parseia o texto do laudo.
 | Custo e latência | R$ e segundos por laudo | documentado por rodada de eval |
 
 **Baselines obrigatórios:**

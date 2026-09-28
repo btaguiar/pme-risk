@@ -53,13 +53,17 @@ Regra: só números reproduzíveis a partir de `eval/*/results/` (BRIEF.md).
 | Brier | 0.0735 | |
 | ECE | 0.0011 | calibração |
 
-### Extração — `eval/laudo/results/laudo_eval_v3.json`
+### Extração — `eval/laudo/results/laudo_eval_v4.json`
 
 | Métrica | Valor | Meta | Status |
 |---|---|---|---|
-| F1 extração | 0.9539 | ≥ 0.90 | ✅ |
-| Recusa correta | 90.91% (10/11) | ≥ 95% | ⚠️ |
-| Latência média | 5.73s | — | — |
+| F1 extração | 0.9493 | ≥ 0.90 | ✅ |
+| Recusa correta | 100% (11/11) | ≥ 95% | ✅ |
+| Latência média | 5.68s | — | — |
+
+**Não implementados nesta fase** (ver PLANO §5):
+- Fidedignidade do laudo (% de afirmações com evidência)
+- Verificado vs. declarado (% de campos classificados)
 
 > **Ressalva:** o salto de F1 (0.84 → 0.95) veio de adicionar exemplos de
 > mapeamento `setor→snake_case` no prompt do Extrator. Alguns exemplos são
@@ -96,7 +100,7 @@ uv run pytest tests/unit/
 # Lint
 uv run ruff check .
 
-# Verificar vazamento de credenciais
+# Verificar vazamento de credenciais (roda automaticamente no commit)
 bash infra/scripts/check_secrets.sh
 
 # Eval do modelo
@@ -105,6 +109,10 @@ GCP_PROJECT_ID=<seu-projeto> uv run python eval/model/run_eval.py
 # Eval da extração
 GCP_PROJECT_ID=<seu-projeto> uv run python eval/laudo/run_eval.py
 ```
+
+**Pre-commit hook:** `infra/scripts/check_secrets.py` roda automaticamente
+antes de cada commit e bloqueia IDs de projeto, chaves ou tokens. Instalado
+em `.git/hooks/pre-commit`. Não precisa lembrar de rodar manualmente.
 
 ## Estrutura
 
