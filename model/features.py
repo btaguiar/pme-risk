@@ -58,15 +58,25 @@ ID_COLUMN = "sk_id_curr"
 
 
 def _farm_fingerprint(value: str) -> int:
-    """FARM_FINGERPRINT compatível com BigQuery (para encoding determinístico).
+    """APROXIMAÇÃO de FARM_FINGERPRINT para encoding determinístico.
 
-    Reproduce a lógica de 01_load_features.sql:
-      MOD(ABS(FARM_FINGERPRINT(IFNULL(OCCUPATION_TYPE, 'UNKNOWN'))), 100)
+    ATENÇÃO: usa MD5, não FarmHash real do BigQuery. Para predição em
+    produção, o encoding DEVE vir do SQL (01_load_features.sql) ou de
+    uma implementação real de FarmHash. Esta função serve apenas para
+    testes locais e EDA.
     """
     import hashlib
 
     h = hashlib.md5(value.encode("utf-8")).hexdigest()
     return int(h[:8], 16) % 100
+
+
+def _hash_deterministico(value: str) -> int:
+    """Hash determinístico para split (compatível entre execuções)."""
+    import hashlib
+
+    h = hashlib.md5(value.encode("utf-8")).hexdigest()
+    return int(h[:8], 16)
 
 
 def preparar_features(df: pd.DataFrame) -> pd.DataFrame:
@@ -111,9 +121,9 @@ def preparar_features(df: pd.DataFrame) -> pd.DataFrame:
     # Alvo
     out[TARGET_COLUMN] = df["TARGET"]
 
-    # Split determinístico via hash do ID (80/20)
-    out[SPLIT_COLUMN] = (out[ID_COLUMN].apply(hash) % 100 < 80).map(
-        {True: "train", False: "holdout"}
+    # Split determinístico via hash MD5 do ID (80/20) — não usar hash() do Python
+    out[SPLIT_COLUMN] = out[ID_COLUMN].map(
+        lambda x: "train" if _hash_deterministico(str(x)) % 100 < 80 else "holdout"
     )
 
     return out

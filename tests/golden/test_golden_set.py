@@ -40,13 +40,19 @@ class TestGoldenSet:
                 pass  # validado pelo Extrator no eval completo
 
     def test_campos_obrigatorios_quando_em_escopo(self):
-        obrigatorios = ["setor", "porte", "uf", "anos_operacao", "valor_solicitado"]
+        """Campos obrigatórios não podem ser None; opcionais podem.
+
+        Opcionais: prazo_meses, cnpj (ver agents/schemas.py).
+        """
+        opcionais = {"prazo_meses", "cnpj", "fora_de_escopo", "motivo_recusa"}
         for i, item in enumerate(_carregar()):
             esp = item["esperado"]
             if esp.get("fora_de_escopo", False):
                 continue
-            for campo in obrigatorios:
-                assert campo in esp, f"Item {i} (em escopo): campo '{campo}' ausente"
+            for campo, valor in esp.items():
+                if campo in opcionais:
+                    continue
+                assert valor is not None, f"Item {i}: campo obrigatório '{campo}' é None"
 
     def test_porte_valores_validos(self):
         validos = {"MEI", "ME", "EPP"}
