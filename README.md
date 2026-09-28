@@ -11,7 +11,7 @@ aprova ou rejeita antes do laudo final.
 |---|---|---|
 | 1 — Modelo | ✅ Completa | LOGISTIC_REG em produção, métricas em `eval/model/results/` |
 | 2 — Laudo | ✅ Estrutural | Agentes, portão humano, auditoria, golden set F1=0.95 |
-| 3 — Produto | 🔧 Código completo | API FastAPI, drift job, Docker, scripts de deploy; e2e verificado — deploy Cloud Run pendente (passo manual) |
+| 3 — Produto | 🔧 Código completo | API FastAPI, drift job, Docker, scripts de deploy; checklist de aceite executado e IAM preparada — falta só o deploy Cloud Run (passo manual) |
 
 ## Arquitetura
 
@@ -95,8 +95,10 @@ uv run uvicorn api.main:app --port 8000
 
 curl http://localhost:8000/healthz
 
+# Com API_KEY_SECRET definido, POST exige o header (GET/healthz seguem abertos)
 curl -X POST http://localhost:8000/laudos \
   -H "Content-Type: application/json" \
+  -H "X-API-Key: $API_KEY_SECRET" \
   -d '{"texto": "Clínica odontológica em SP, ME, 5 anos de operação, faturamento R$ 2.000.000, solicita R$ 300.000 para expansão."}'
 
 curl -X PATCH http://localhost:8000/laudos/<laudo_id>/decisao \
@@ -132,14 +134,27 @@ fora: sem análogo honesto no Home Credit (limite documentado).
 
 ## Deploy (passo manual)
 
-O build é validado localmente (`docker build -f docker/Dockerfile -t pme-risk-api .`),
-mas o deploy real exige `gcloud` autenticado e service account criada no console:
+O build e os endpoints já foram validados localmente (Docker com ADC montado,
+smoke 401/404/201 e integração e2e contra GCP real). O deploy exige:
+
+| Variável | Valor |
+|---|---|
+| `GCP_PROJECT_ID` | projeto GCP destino |
+| `RUN_SERVICE_ACCOUNT` | SA da API — já criada com papéis BQ: `pme-risk-api@<proj>.iam.gserviceaccount.com` |
+| `API_KEY_SECRET` | segredo do header `X-API-Key` (obrigatório — fail-closed) |
 
 ```bash
-export GCP_PROJECT_ID=... RUN_SERVICE_ACCOUNT=...
+export GCP_PROJECT_ID=... RUN_SERVICE_ACCOUNT=... API_KEY_SECRET=...
 bash infra/scripts/deploy_api.sh     # API no Cloud Run (--allow-unauthenticated p/ demo)
 bash infra/scripts/deploy_drift.sh   # Job de drift + Scheduler semanal
 ```
+
+Pós-deploy: repetir o smoke (`healthz`, `401` sem key, `404` em
+`PATCH /laudos/id-inexistente/decisao`, `201` com key) contra a URL pública.
+
+Pré-requisitos já verificados (2026-09-27): tabelas `features`, `laudos`,
+`model_registry`, `trilha_auditoria` no BigQuery; budget alert
+`pme-risk-budget` (R$ 200, thresholds 50/80/100) ativo.
 
 ## Stack
 

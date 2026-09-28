@@ -2,6 +2,10 @@
 
 Configurar alertas de billing **antes de qualquer chamada de API**.
 
+> **Status: ✅ configurado e verificado em 2026-09-27** — `pme-risk-budget`,
+> R$ 200 BRL, thresholds 50/80/100, confirmado via
+> `gcloud billing budgets list` no billing account do projeto.
+
 ## Passos (console)
 
 1. Acessar [Billing Budgets](https://console.cloud.google.com/billing/budgets)

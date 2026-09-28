@@ -30,7 +30,11 @@ Formato do laudo final: **só JSON** (sem HTML/PDF) — decisão do desenvolvedo
 - `POST /laudos` — body `{"texto": "<pedido pt-BR>"}`:
   - Sucesso → `201 {"laudo_id": "<uuid4>", "status": "pendente"}`;
   - Extrator recusa (`fora_de_escopo=true`) → `422 {"motivo_recusa": "..."}`,
-    sem laudo persistido, mas com registro na `trilha_auditoria`.
+    sem laudo persistido, mas com registro na `trilha_auditoria`;
+  - **Proteção da demo pública:** com env `API_KEY_SECRET` definida, exige
+    header `X-API-Key` com o mesmo valor (`hmac.compare_digest`) → `401`
+    sem ela. Sem a var (dev local), endpoint aberto. Cada POST custa
+    Gemini + BigQuery reais (PLANO §7).
 - `GET /laudos/{id}` — laudo completo em JSON: desserializa
   `enriquecidos_json` e `resultado_modelo_json` da tabela `laudos` e devolve
   o documento aninhado + colunas de decisão. `404` se inexistente.
@@ -87,6 +91,8 @@ falso em memória — nenhuma chamada a GCP nos testes unitários.
   com service account de papel mínimo (BigQuery Data Editor + Job User),
   idempotente, sem IDs de projeto hard-coded (lê `GCP_PROJECT_ID`).
 - `infra/scripts/deploy_drift.sh` — build do job de drift como Cloud Run Job +
+  Scheduler semanal. Nota: `roles/cloudrun.invoker` é rejeitado a nível de
+  projeto (`INVALID_ARGUMENT`) — binda no recurso do job após a criação.
   `gcloud scheduler jobs create http` semanal (OIDC), idempotente.
 
 ## 5. Testes (arquivos novos)

@@ -180,7 +180,7 @@ não um modelo pronto para concessão real.
 |---|---|---|---|---|
 | **1 — Modelo** | 3 semanas | Treino no BigQuery ML, baseline logístico, KS/AUC/Brier, versionamento | Métricas do modelo em `eval/`; funciona sozinho | ✅ Completa |
 | **2 — Laudo** | 4 semanas | Extrator + Pesquisador + Redator + portão humano + trilha de auditoria; golden set; baseline de chamada única | Multi-agente supera o baseline (ou decisão registrada) | ✅ Estrutural |
-| **3 — Produto** | 3 semanas | Deploy em Cloud Run, job de drift, laudo navegável, README | Demo pública; post LinkedIn com números do eval | 🔧 Código completo (API, drift, Docker, scripts); e2e verificado; deploy pendente |
+| **3 — Produto** | 3 semanas | Deploy em Cloud Run, job de drift, laudo navegável, README | Demo pública; post LinkedIn com números do eval | 🔧 Código completo; checklist de aceite executado (Docker local, smoke 401/404/201, e2e real, drift, budget); IAM preparada (SA + papéis BQ); falta o deploy |
 
 Se uma fase estourar o prazo, corta-se escopo — não se estende o prazo.
 Fase 2 aceitável sem três agentes separados, se o baseline empatar.
