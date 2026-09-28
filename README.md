@@ -140,7 +140,15 @@ smoke 401/404/201 e integração e2e contra GCP real). O deploy exige:
 | Variável | Valor |
 |---|---|
 | `GCP_PROJECT_ID` | projeto GCP destino |
-| `RUN_SERVICE_ACCOUNT` | SA da API — já criada com papéis BQ: `pme-risk-api@<proj>.iam.gserviceaccount.com` |
+| `RUN_SERVICE_ACCOUNT` | SA da API: `pme-risk-api@<proj>.iam.gserviceaccount.com` — papéis `bigquery.dataEditor/dataViewer/jobUser` + `aiplatform.user` |
+
+> **Validação com a identidade da SA (2026-09-27):** os testes e2e rodaram com
+> ADC do usuário (permissões amplas) — então as permissões da SA foram
+> validadas separadamente, por impersonation com token dela: BigQuery
+> `query` → 200; Vertex AI `generateContent` (gemini-2.5-flash) → 200.
+> Antes do deploy real, opcionalmente rode o e2e inteiro como a SA:
+> `gcloud auth application-default login --impersonate-service-account=$RUN_SERVICE_ACCOUNT`
+> e `GCP_PROJECT_ID=<proj> uv run pytest tests/integration -v` (restaura o ADC depois).
 | `API_KEY_SECRET` | segredo do header `X-API-Key` (obrigatório — fail-closed) |
 
 ```bash

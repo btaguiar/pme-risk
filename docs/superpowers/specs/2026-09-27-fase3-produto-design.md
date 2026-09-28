@@ -88,8 +88,10 @@ falso em memória — nenhuma chamada a GCP nos testes unitários.
   runtime via service account do Cloud Run.
 - `.dockerignore` na raiz (`.venv`, `data/raw`, `.env`, caches).
 - `infra/scripts/deploy_api.sh` — `gcloud run deploy pme-risk-api --source .`
-  com service account de papel mínimo (BigQuery Data Editor + Job User),
-  idempotente, sem IDs de projeto hard-coded (lê `GCP_PROJECT_ID`).
+  com service account de papel mínimo (BigQuery Data Editor + Job User +
+  **aiplatform.user** — Gemini roda no Vertex AI), habilita as APIs
+  (`aiplatform`, `bigquery`, `run`), idempotente, sem IDs de projeto
+  hard-coded (lê `GCP_PROJECT_ID`).
 - `infra/scripts/deploy_drift.sh` — build do job de drift como Cloud Run Job +
   Scheduler semanal. Nota: `roles/cloudrun.invoker` é rejeitado a nível de
   projeto (`INVALID_ARGUMENT`) — binda no recurso do job após a criação.
