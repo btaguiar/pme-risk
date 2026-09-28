@@ -253,11 +253,22 @@ def executar_golden_set(
     return relatorio
 
 
-def montar_resultado(relatorio: RelatorioEval, parcial: bool) -> dict:
+def _media(valores: list) -> float | None:
+    valores = [v for v in valores if v is not None]
+    return round(sum(valores) / len(valores), 1) if valores else None
+
+
+def montar_resultado(
+    relatorio: RelatorioEval,
+    parcial: bool,
+    modelo: str | None = None,
+    uso: list[dict] | None = None,
+) -> dict:
     """Resultado serializável — o JSON citável em README/PLANO."""
     c = relatorio.contagem
     return {
         "metodo": "v5",
+        "modelo": modelo,
         "parcial": parcial,
         "f1_extracao": round(c.f1, 4),
         "precisao": round(c.precisao, 4),
@@ -286,6 +297,9 @@ def montar_resultado(relatorio: RelatorioEval, parcial: bool) -> dict:
             2,
         ),
         "custo_estimado_usd": round(len(relatorio.latencias) * _CUSTO_ESTIMADO_POR_CHAMADA_USD, 4),
+        # Tokens medidos pela API (só provedores que devolvem `usage`)
+        "tokens_entrada_medio": _media([u["entrada"] for u in uso]) if uso else None,
+        "tokens_saida_medio": _media([u["saida"] for u in uso]) if uso else None,
         "divergencias": relatorio.divergencias,
         "falhas": relatorio.falhas,
     }
@@ -304,18 +318,40 @@ def salvar_resultado(resultado: dict, nome: str) -> Path:
 def main() -> None:
     import os
 
+    from agents.extractor.extractor import EXTRACT_MODEL
+
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--nome", default="laudo_eval_v5", help="arquivo em results/")
+    parser.add_argument("--nome", default=None, help="arquivo em results/")
+    parser.add_argument(
+        "--modelo",
+        default=EXTRACT_MODEL,
+        help="modelo do Extrator; fora o Gemini de produção, usa a API compatível "
+        "com OpenAI (eval/laudo/extrator_openai_compat.py)",
+    )
     parser.add_argument("--max-itens", type=int, default=None, help="rodada parcial")
     args = parser.parse_args()
 
+    extrair_fn = None  # Extrator de produção (Gemini)
+    uso = None
+    if args.modelo != EXTRACT_MODEL:
+        from eval.laudo.extrator_openai_compat import ExtratorOpenAICompat
+
+        extrair_fn = ExtratorOpenAICompat(modelo=args.modelo)
+        uso = extrair_fn.uso
+
     relatorio = executar_golden_set(
-        project_id=os.environ.get("GCP_PROJECT_ID"), max_itens=args.max_itens
+        extrair_fn=extrair_fn,
+        project_id=os.environ.get("GCP_PROJECT_ID"),
+        max_itens=args.max_itens,
     )
     parcial = args.max_itens is not None
+    nome = args.nome or (
+        "laudo_eval_v6" if args.modelo == EXTRACT_MODEL else f"laudo_eval_v6_{args.modelo}"
+    )
     # Rodada parcial nunca sobrescreve o resultado citável
-    nome = f"{args.nome}_parcial" if parcial else args.nome
-    resultado = montar_resultado(relatorio, parcial)
+    if parcial:
+        nome = f"{nome}_parcial"
+    resultado = montar_resultado(relatorio, parcial, modelo=args.modelo, uso=uso)
     path = salvar_resultado(resultado, nome)
     resumo = {k: v for k, v in resultado.items() if k not in ("divergencias", "falhas")}
     print(json.dumps(resumo, indent=2, ensure_ascii=False))

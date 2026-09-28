@@ -1,0 +1,179 @@
+{
+  "metodo": "v5",
+  "modelo": "qwen3.8-max",
+  "parcial": false,
+  "f1_extracao": 0.9578,
+  "precisao": 0.9812,
+  "recall": 0.9355,
+  "f1_macro_por_item": 0.9304,
+  "f1_metodo_v4": 0.9815,
+  "tp": 261,
+  "fp": 5,
+  "fn": 18,
+  "classes": {
+    "acerto": 261,
+    "erro_valor": 5,
+    "negativo": 72,
+    "omissao": 13
+  },
+  "f1_por_campo": {
+    "setor": 0.9737,
+    "porte": 0.9737,
+    "uf": 0.9867,
+    "anos_operacao": 0.9737,
+    "faturamento_anual_declarado": 0.9737,
+    "valor_solicitado": 0.9737,
+    "prazo_meses": 1.0,
+    "finalidade": 0.8421,
+    "cnpj": null
+  },
+  "taxa_recusa_correta": 0.9091,
+  "n_recusas_esperadas": 11,
+  "n_recusas_corretas": 10,
+  "taxa_recusa_indevida": 0.0256,
+  "n_recusas_indevidas": 1,
+  "n_itens": 50,
+  "n_em_escopo": 39,
+  "n_falhas_execucao": 1,
+  "latencia_media_s": 24.38,
+  "custo_estimado_usd": 0.005,
+  "tokens_entrada_medio": 1827.3,
+  "tokens_saida_medio": 820.9,
+  "divergencias": [
+    {
+      "indice": 1,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "compra_de_ativo",
+      "obtido": "frota"
+    },
+    {
+      "indice": 9,
+      "campo": "setor",
+      "tipo": "omissao",
+      "esperado": "informacao_comunicacao",
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "porte",
+      "tipo": "omissao",
+      "esperado": "ME",
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "anos_operacao",
+      "tipo": "omissao",
+      "esperado": 0,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "faturamento_anual_declarado",
+      "tipo": "omissao",
+      "esperado": 0,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "valor_solicitado",
+      "tipo": "omissao",
+      "esperado": 100000,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "finalidade",
+      "tipo": "omissao",
+      "esperado": "abertura_de_empresa",
+      "obtido": null
+    },
+    {
+      "indice": 14,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "infraestrutura",
+      "obtido": "centro_de_distribuicao"
+    },
+    {
+      "indice": 25,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "infraestrutura",
+      "obtido": "galpao"
+    },
+    {
+      "indice": 34,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "projeto",
+      "obtido": "projeto_comercial"
+    },
+    {
+      "indice": 43,
+      "campo": "setor",
+      "tipo": "omissao",
+      "esperado": [
+        "outros_servicos",
+        "construcao"
+      ],
+      "obtido": null
+    },
+    {
+      "indice": 43,
+      "campo": "porte",
+      "tipo": "omissao",
+      "esperado": "MEI",
+      "obtido": null
+    },
+    {
+      "indice": 43,
+      "campo": "uf",
+      "tipo": "omissao",
+      "esperado": "MG",
+      "obtido": null
+    },
+    {
+      "indice": 43,
+      "campo": "anos_operacao",
+      "tipo": "omissao",
+      "esperado": 2,
+      "obtido": null
+    },
+    {
+      "indice": 43,
+      "campo": "faturamento_anual_declarado",
+      "tipo": "omissao",
+      "esperado": 60000,
+      "obtido": null
+    },
+    {
+      "indice": 43,
+      "campo": "valor_solicitado",
+      "tipo": "omissao",
+      "esperado": 5000,
+      "obtido": null
+    },
+    {
+      "indice": 43,
+      "campo": "finalidade",
+      "tipo": "omissao",
+      "esperado": "equipamentos",
+      "obtido": null
+    },
+    {
+      "indice": 47,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "estoque",
+      "obtido": "colecao"
+    }
+  ],
+  "falhas": [
+    {
+      "indice": 43,
+      "erro": "ReadTimeout: The read operation timed out"
+    }
+  ]
+}

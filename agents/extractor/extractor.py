@@ -26,6 +26,18 @@ def _carregar_prompt() -> str:
     return PROMPT_PATH.read_text(encoding="utf-8")
 
 
+def montar_prompt(texto: str) -> str:
+    """Prompt completo do Extrator — compartilhado com o eval de outros provedores."""
+    return f"""{_carregar_prompt()}
+
+---
+
+Extraia os dados do seguinte pedido:
+
+{texto}
+"""
+
+
 def extrair(
     texto: str,
     project_id: str | None = None,
@@ -47,18 +59,9 @@ def extrair(
         http_options=HTTP_OPTIONS,
     )
 
-    prompt = f"""{_carregar_prompt()}
-
----
-
-Extraia os dados do seguinte pedido:
-
-{texto}
-"""
-
     response = client.models.generate_content(
         model=EXTRACT_MODEL,
-        contents=prompt,
+        contents=montar_prompt(texto),
         config=types.GenerateContentConfig(
             response_mime_type="application/json",
             response_schema=DadosExtraidos,

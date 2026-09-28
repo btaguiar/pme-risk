@@ -15,7 +15,7 @@ from pathlib import Path
 # Prefixos genéricos de credenciais (Kaggle, Google API key, OAuth token)
 GENERIC_PATTERNS = ["KGAT_", "AIza", "ya29."]
 
-# IDs de projeto NÃO ficam neste arquivo (ele é versionado — listá-los aqui
+# IDs de projeto e valores de chaves NÃO ficam neste arquivo (ele é versionado — listá-los aqui
 # seria o próprio vazamento). Vêm de fontes locais, fora do git:
 #   - GCP_PROJECT_ID do ambiente ou do .env
 #   - infra/scripts/secret_patterns.local (um padrão por linha, gitignored)
@@ -35,6 +35,14 @@ def _load_patterns(root: Path) -> list[str]:
                 project_id = line.split("=", 1)[1].strip().strip("\"'")
     if project_id:
         patterns.append(project_id)
+    # Valores de chaves/segredos do .env local (ex.: DASHSCOPE_API_KEY). Prefixo
+    # genérico como "sk-" não serve: casaria com "pme-risk-api".
+    if env_file.is_file():
+        for line in env_file.read_text(encoding="utf-8", errors="ignore").splitlines():
+            nome, _, valor = line.partition("=")
+            valor = valor.strip().strip("\"'")
+            if nome.strip().endswith(("_KEY", "_SECRET", "_TOKEN")) and len(valor) >= 12:
+                patterns.append(valor)
     if LOCAL_PATTERNS_FILE.is_file():
         for line in LOCAL_PATTERNS_FILE.read_text(encoding="utf-8").splitlines():
             line = line.strip()
@@ -102,7 +110,7 @@ def main() -> int:
         for pattern in patterns:
             if pattern in text:
                 # Não ecoa padrões locais — o log do hook também é "material"
-                shown = pattern if pattern in GENERIC_PATTERNS else "<id-de-projeto>"
+                shown = pattern if pattern in GENERIC_PATTERNS else "<valor-local: id de projeto ou chave>"
                 print(f"ERRO: padrao '{shown}' encontrado em: {rel}")
                 fail = True
 

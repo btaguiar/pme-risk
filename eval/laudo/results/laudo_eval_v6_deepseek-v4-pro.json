@@ -1,0 +1,136 @@
+{
+  "metodo": "v5",
+  "modelo": "deepseek-v4-pro",
+  "parcial": false,
+  "f1_extracao": 0.9553,
+  "precisao": 0.9536,
+  "recall": 0.957,
+  "f1_macro_por_item": 0.9542,
+  "f1_metodo_v4": 0.9662,
+  "tp": 267,
+  "fp": 13,
+  "fn": 12,
+  "classes": {
+    "acerto": 267,
+    "alucinacao": 1,
+    "erro_valor": 12,
+    "negativo": 71
+  },
+  "f1_por_campo": {
+    "setor": 1.0,
+    "porte": 0.9744,
+    "uf": 0.987,
+    "anos_operacao": 1.0,
+    "faturamento_anual_declarado": 1.0,
+    "valor_solicitado": 1.0,
+    "prazo_meses": 1.0,
+    "finalidade": 0.7179,
+    "cnpj": null
+  },
+  "taxa_recusa_correta": 1.0,
+  "n_recusas_esperadas": 11,
+  "n_recusas_corretas": 11,
+  "taxa_recusa_indevida": 0.0,
+  "n_recusas_indevidas": 0,
+  "n_itens": 50,
+  "n_em_escopo": 39,
+  "n_falhas_execucao": 0,
+  "latencia_media_s": 10.98,
+  "custo_estimado_usd": 0.005,
+  "tokens_entrada_medio": 1845.6,
+  "tokens_saida_medio": 750.9,
+  "divergencias": [
+    {
+      "indice": 1,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "compra_de_ativo",
+      "obtido": "frota"
+    },
+    {
+      "indice": 9,
+      "campo": "porte",
+      "tipo": "erro_valor",
+      "esperado": "ME",
+      "obtido": "MEI"
+    },
+    {
+      "indice": 9,
+      "campo": "uf",
+      "tipo": "alucinacao",
+      "esperado": null,
+      "obtido": "PE"
+    },
+    {
+      "indice": 10,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "equipamentos",
+      "obtido": "equipamentos_medicos"
+    },
+    {
+      "indice": 14,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "infraestrutura",
+      "obtido": "expansao"
+    },
+    {
+      "indice": 25,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "infraestrutura",
+      "obtido": "galpao"
+    },
+    {
+      "indice": 33,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "equipamentos",
+      "obtido": "maquinas"
+    },
+    {
+      "indice": 34,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "projeto",
+      "obtido": "projeto_comercial"
+    },
+    {
+      "indice": 39,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "frota",
+      "obtido": "veiculos"
+    },
+    {
+      "indice": 43,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "equipamentos",
+      "obtido": "ferramentas"
+    },
+    {
+      "indice": 44,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "expansao",
+      "obtido": "nova_linha_de_producao"
+    },
+    {
+      "indice": 46,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "expansao",
+      "obtido": "ampliacao"
+    },
+    {
+      "indice": 47,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "estoque",
+      "obtido": "colecao"
+    }
+  ],
+  "falhas": []
+}

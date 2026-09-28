@@ -1,0 +1,157 @@
+{
+  "metodo": "v5",
+  "modelo": "deepseek-v4-pro",
+  "parcial": false,
+  "f1_extracao": 0.9529,
+  "precisao": 0.9634,
+  "recall": 0.9427,
+  "f1_macro_por_item": 0.9382,
+  "f1_metodo_v4": 0.9698,
+  "tp": 263,
+  "fp": 10,
+  "fn": 16,
+  "classes": {
+    "acerto": 263,
+    "erro_valor": 10,
+    "negativo": 72,
+    "omissao": 6
+  },
+  "f1_por_campo": {
+    "setor": 0.987,
+    "porte": 0.987,
+    "uf": 1.0,
+    "anos_operacao": 0.987,
+    "faturamento_anual_declarado": 0.987,
+    "valor_solicitado": 0.987,
+    "prazo_meses": 1.0,
+    "finalidade": 0.7273,
+    "cnpj": null
+  },
+  "taxa_recusa_correta": 1.0,
+  "n_recusas_esperadas": 11,
+  "n_recusas_corretas": 11,
+  "taxa_recusa_indevida": 0.0256,
+  "n_recusas_indevidas": 1,
+  "n_itens": 50,
+  "n_em_escopo": 39,
+  "n_falhas_execucao": 0,
+  "latencia_media_s": 12.34,
+  "custo_estimado_usd": 0.005,
+  "tokens_entrada_medio": 1845.6,
+  "tokens_saida_medio": 734.5,
+  "divergencias": [
+    {
+      "indice": 1,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "compra_de_ativo",
+      "obtido": "moto"
+    },
+    {
+      "indice": 9,
+      "campo": "setor",
+      "tipo": "omissao",
+      "esperado": "informacao_comunicacao",
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "porte",
+      "tipo": "omissao",
+      "esperado": "ME",
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "anos_operacao",
+      "tipo": "omissao",
+      "esperado": 0,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "faturamento_anual_declarado",
+      "tipo": "omissao",
+      "esperado": 0,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "valor_solicitado",
+      "tipo": "omissao",
+      "esperado": 100000,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "finalidade",
+      "tipo": "omissao",
+      "esperado": "abertura_de_empresa",
+      "obtido": null
+    },
+    {
+      "indice": 10,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "equipamentos",
+      "obtido": "equipamentos_medicos"
+    },
+    {
+      "indice": 14,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "infraestrutura",
+      "obtido": "centro_de_distribuicao"
+    },
+    {
+      "indice": 15,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "equipamentos",
+      "obtido": "forno_industrial"
+    },
+    {
+      "indice": 25,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "infraestrutura",
+      "obtido": "galpao"
+    },
+    {
+      "indice": 28,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "equipamentos",
+      "obtido": "impressora_industrial"
+    },
+    {
+      "indice": 34,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "projeto",
+      "obtido": "projeto_comercial"
+    },
+    {
+      "indice": 43,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "equipamentos",
+      "obtido": "ferramentas"
+    },
+    {
+      "indice": 46,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "expansao",
+      "obtido": "ampliacao"
+    },
+    {
+      "indice": 47,
+      "campo": "finalidade",
+      "tipo": "erro_valor",
+      "esperado": "estoque",
+      "obtido": "colecao"
+    }
+  ],
+  "falhas": []
+}

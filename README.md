@@ -110,6 +110,40 @@ fotografia → R em vez de M; vigilância → S em vez de N).
 > (5) A recusa indevida é o item 9 ("quero abrir uma empresa", sem UF nem
 > porte) — anotação discutível, mantida para não ajustar o rótulo ao resultado.
 
+### Comparação de modelos no Extrator — `eval/laudo/results/laudo_eval_v6_*.json`
+
+Mesmo prompt, mesmo schema (JSON Schema strict), mesmo golden set; 2 rodadas
+completas por modelo (média). Os outros modelos via API compatível com OpenAI
+(Alibaba Model Studio) — **só no eval**, ver `eval/laudo/extrator_openai_compat.py`.
+
+| Modelo | F1 (r1 / r2) | Média | `setor` | `finalidade` | Alucinação | Recusa correta | Latência |
+|---|---|---|---|---|---|---|---|
+| **gemini-2.5-flash** (produção) | 0.9601 / 0.9601 | 0.9601 | 0.909 | 0.857 | 0 | 22/22 | **8.4s** |
+| qwen3.8-flash | 0.9529 / 0.9638 | 0.9584 | 0.961 | 0.792 | 0 | 22/22 | 15.5s |
+| qwen3.8-max | 0.9710 / 0.9578 | 0.9644 | 0.980 | 0.850 | 0 | 21/22 | 25.1s |
+| deepseek-v4-pro | 0.9553 / 0.9529 | 0.9541 | 0.994 | 0.723 | 1 | 22/22 | 11.7s |
+
+**Decisão: Gemini segue em produção.** As diferenças de F1 (≤ 1 ponto na média)
+estão dentro da variação entre rodadas do mesmo modelo (qwen3.8-max: 1.3 ponto;
+a r2 inclui um timeout de 180s, contado como falha). O Gemini é o mais rápido,
+o único estável entre rodadas, e fica no GCP — outro provedor em produção exige
+análise de LGPD (transferência internacional, retenção, uso para treino).
+
+> **Leituras e ressalvas:**
+> (1) Os três modelos alternativos classificam `setor` (CNAE) melhor que o
+> Gemini (0.96–0.99 × 0.91) e pior `finalidade` (0.72–0.85 × 0.86) — mas
+> `finalidade` é texto livre e o prompt/rótulos foram iterados sobre o Gemini
+> (v1–v4), o que favorece o Gemini nesse campo.
+> (2) Critério de entrada: o modelo precisa impor o schema. `glm-5.3` aceita
+> `json_schema` e o ignora; `deepseek-v4.1-flash` o rejeita — ficaram de fora
+> (com JSON livre, o eval mediria formato, não extração).
+> (3) Schema frouxo quebra silenciosamente: com `fora_de_escopo` opcional, o
+> deepseek-v4-pro recusava devolvendo só `{"pedido": null}` (0/11 recusas
+> válidas). O extrator do eval marca todos os campos como `required`
+> (semântica strict); números acima já com essa correção.
+> (4) Todos raciocinam por padrão (~750–950 tokens de saída por pedido); o custo
+> do Gemini não é medido pelo eval (só o `usage` dos outros provedores).
+
 **Não implementados nesta fase** (ver PLANO §5):
 - Fidedignidade do laudo (% de afirmações com evidência)
 - Verificado vs. declarado (% de campos classificados)
