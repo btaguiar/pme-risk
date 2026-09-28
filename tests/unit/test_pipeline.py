@@ -48,7 +48,7 @@ class FakePortao:
     def decidir(self, laudo_id, decisao, decidido_por, observacao=None):
         row = self.laudos.get(laudo_id)
         if row is None:
-            return None
+            return {}
         row.update(
             status=decisao,
             decisao=decisao,
@@ -67,11 +67,13 @@ class FakeAuditoria:
         self.registros.append(kwargs)
 
 
-def _pipeline(recusa: bool = False) -> tuple[Pipeline, FakePortao, FakeAuditoria]:
+def _pipeline(
+    recusa: bool = False, features_capturadas: list[dict[str, float]] | None = None
+) -> tuple[Pipeline, FakePortao, FakeAuditoria]:
     portao = FakePortao()
     auditoria = FakeAuditoria()
 
-    def extrair_fn(texto: str) -> DadosExtraidos:
+    def extrair_fn(texto: str, project_id: str | None = None) -> DadosExtraidos:
         return DadosExtraidos(
             pedido=_PEDIDO,
             fora_de_escopo=recusa,
@@ -84,6 +86,8 @@ def _pipeline(recusa: bool = False) -> tuple[Pipeline, FakePortao, FakeAuditoria
     def prever_fn(features: dict[str, float], project_id: str, dataset: str):
         from model.predict import ResultadoPredicao
 
+        if features_capturadas is not None:
+            features_capturadas.append(features)
         return ResultadoPredicao(
             pd=0.07, faixa_risco="medio", fatores=[("amt_credit", 0.02)], model_version="logreg_v1"
         )
@@ -123,6 +127,12 @@ class TestPipelineGerar:
         assert registro["model_version"] == "logreg_v1"
         assert "extrator" in registro["prompts_usados"]
         assert "redator" in registro["prompts_usados"]
+        assert [e["etapa"] for e in registro["etapas"]] == [
+            "extrator",
+            "pesquisador",
+            "modelo",
+            "redator",
+        ]
 
     def test_recusa_nao_cria_laudo_mas_audita(self):
         pipeline, portao, auditoria = _pipeline(recusa=True)
@@ -143,6 +153,15 @@ class TestPipelineGerar:
         resultado_modelo = json.loads(row["resultado_modelo_json"])
         assert resultado_modelo["pd"] == 0.07
         assert resultado_modelo["model_version"] == "logreg_v1"
+
+    def test_features_derivam_do_pedido(self):
+        capturadas: list[dict[str, float]] = []
+        pipeline, _, _ = _pipeline(features_capturadas=capturadas)
+        resultado = pipeline.gerar("texto")
+        assert isinstance(resultado, LaudoCriado)
+        feats = capturadas[0]
+        assert feats["amt_credit"] == 300_000.0
+        assert feats["amt_income_total"] == 2_000_000.0
 
 
 class TestPipelineDecisao:

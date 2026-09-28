@@ -10,6 +10,7 @@ model/features.py (SPEC §3.2) — proxy, não paridade com Home Credit.
 from __future__ import annotations
 
 import json
+import logging
 import os
 import uuid
 from collections.abc import Callable
@@ -26,6 +27,8 @@ from agents.schemas import DadosEnriquecidos, DadosExtraidos, PedidoCredito, Res
 from api.auditoria import TrilhaAuditoria
 from api.routes.portao_humano import PortaoHumano
 from model.predict import ResultadoPredicao, prever
+
+_log = logging.getLogger(__name__)
 
 # Proxy neutro de UF → region_rating. 2 é a moda de REGION_RATING_CLIENT.
 # Sem inventar risco por UF (SPEC §3.2: "não geografia real").
@@ -75,6 +78,7 @@ class LaudoCriado:
     status: str = "pendente"
 
 
+@lru_cache
 def _hashes_prompt() -> dict[str, str]:
     return {
         "extrator": TrilhaAuditoria.hash_prompt(_EXTRACTOR_PROMPT_PATH.read_text(encoding="utf-8")),
@@ -112,7 +116,7 @@ class Pipeline:
     def gerar(self, texto: str) -> LaudoCriado | Recusa:
         """Roda o pipeline completo até `status='pendente'` (SPEC §5.1)."""
         etapas: list[dict[str, str]] = []
-        extraidos = self._extrair_fn(texto)
+        extraidos = self._extrair_fn(texto, project_id=self.project_id)
         etapas.append({"etapa": "extrator", "timestamp": _agora()})
 
         if extraidos.fora_de_escopo:
@@ -151,14 +155,19 @@ class Pipeline:
             texto=redacao.texto,
             evidencias_json=json.dumps(redacao.evidencias, ensure_ascii=False),
         )
-        self._auditoria.registrar(
-            laudo_id=laudo_id,
-            pedido_bruto=texto,
-            model_version=predicao.model_version,
-            prompts_usados=_hashes_prompt(),
-            decisao_humana=None,
-            etapas=etapas,
-        )
+        try:
+            self._auditoria.registrar(
+                laudo_id=laudo_id,
+                pedido_bruto=texto,
+                model_version=predicao.model_version,
+                prompts_usados=_hashes_prompt(),
+                decisao_humana=None,
+                etapas=etapas,
+            )
+        except Exception:
+            # Laudo já persistido — falha de auditoria não deve falhar a requisição
+            # (retry do cliente duplicaria o laudo). Degradação visível nos logs.
+            _log.exception("Falha ao registrar auditoria do laudo %s", laudo_id)
         return LaudoCriado(laudo_id=laudo_id)
 
     def obter(self, laudo_id: str) -> dict | None:
@@ -171,7 +180,8 @@ class Pipeline:
         decidido_por: str,
         observacao: str | None = None,
     ) -> dict | None:
-        return self._portao.decidir(laudo_id, decisao, decidido_por, observacao)
+        row = self._portao.decidir(laudo_id, decisao, decidido_por, observacao)
+        return row or None
 
 
 def _agora() -> str:
