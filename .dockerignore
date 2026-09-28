@@ -1,0 +1,12 @@
+.git
+.venv
+.env
+data/raw
+data/golden_set
+docs/
+eval/
+tests/
+infra/
+**/__pycache__
+.pytest_cache
+.ruff_cache
