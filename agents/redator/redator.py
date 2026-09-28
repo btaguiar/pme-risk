@@ -15,6 +15,7 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
+from agents.gemini import HTTP_OPTIONS
 from agents.schemas import DadosEnriquecidos, ResultadoModelo
 
 PROMPT_PATH = Path(__file__).parent / "prompt.md"
@@ -54,6 +55,7 @@ def redigir(
         vertexai=True,
         project=project_id,
         location=VERTEX_LOCATION,
+        http_options=HTTP_OPTIONS,
     )
 
     dados_json = json.dumps(

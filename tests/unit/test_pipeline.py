@@ -5,6 +5,7 @@ from __future__ import annotations
 from agents.redator.redator import ResultadoRedacao
 from agents.schemas import DadosEnriquecidos, DadosExtraidos, PedidoCredito
 from api.pipeline import LaudoCriado, Pipeline, Recusa
+from api.routes.portao_humano import LaudoJaDecididoError
 
 _PEDIDO = PedidoCredito(
     setor="saude_odontologica",
@@ -48,7 +49,9 @@ class FakePortao:
     def decidir(self, laudo_id, decisao, decidido_por, observacao=None):
         row = self.laudos.get(laudo_id)
         if row is None:
-            return {}
+            return None
+        if row["status"] != "pendente":
+            raise LaudoJaDecididoError(laudo_id, row["status"])
         row.update(
             status=decisao,
             decisao=decisao,
@@ -89,7 +92,10 @@ def _pipeline(
         if features_capturadas is not None:
             features_capturadas.append(features)
         return ResultadoPredicao(
-            pd=0.07, faixa_risco="medio", fatores=[("amt_credit", 0.02)], model_version="logreg_v1"
+            pd=0.07,
+            faixa_risco="medio",
+            fatores=[("amt_credit", 0.02), ("sem_emprego_registrado", 0.08)],
+            model_version="logreg_v1",
         )
 
     def redigir_fn(enriquecidos, resultado_modelo, project_id=None) -> ResultadoRedacao:
@@ -154,6 +160,16 @@ class TestPipelineGerar:
         assert resultado_modelo["pd"] == 0.07
         assert resultado_modelo["model_version"] == "logreg_v1"
 
+    def test_fatores_constantes_no_servico_nao_vao_ao_laudo(self):
+        import json
+
+        pipeline, portao, _ = _pipeline()
+        resultado = pipeline.gerar("texto")
+        assert isinstance(resultado, LaudoCriado)
+        row = portao.obter(resultado.laudo_id)
+        fatores = json.loads(row["resultado_modelo_json"])["fatores"]
+        assert fatores == [["amt_credit", 0.02]]
+
     def test_features_derivam_do_pedido(self):
         capturadas: list[dict[str, float]] = []
         pipeline, _, _ = _pipeline(features_capturadas=capturadas)
@@ -175,3 +191,44 @@ class TestPipelineDecisao:
     def test_decidir_laudo_inexistente_retorna_none(self):
         pipeline, _, _ = _pipeline()
         assert pipeline.decidir("inexistente", "aprovado", "analista-1") is None
+
+    def test_decisao_entra_na_trilha_de_auditoria(self):
+        import json
+
+        pipeline, _, auditoria = _pipeline()
+        laudo = pipeline.gerar("texto")
+        assert isinstance(laudo, LaudoCriado)
+        pipeline.decidir(laudo.laudo_id, "rejeitado", "analista-1", "renda inconsistente")
+        assert len(auditoria.registros) == 2
+        registro = auditoria.registros[1]
+        assert registro["laudo_id"] == laudo.laudo_id
+        assert registro["model_version"] == "logreg_v1"
+        assert [e["etapa"] for e in registro["etapas"]] == ["decisao_humana"]
+        decisao = json.loads(registro["decisao_humana"])
+        assert decisao["decisao"] == "rejeitado"
+        assert decisao["decidido_por"] == "analista-1"
+        assert decisao["observacao"] == "renda inconsistente"
+
+    def test_redecidir_levanta_e_nao_audita(self):
+        import pytest
+
+        pipeline, portao, auditoria = _pipeline()
+        laudo = pipeline.gerar("texto")
+        assert isinstance(laudo, LaudoCriado)
+        pipeline.decidir(laudo.laudo_id, "aprovado", "analista-1")
+        with pytest.raises(LaudoJaDecididoError):
+            pipeline.decidir(laudo.laudo_id, "rejeitado", "outra-pessoa")
+        assert portao.obter(laudo.laudo_id)["decidido_por"] == "analista-1"
+        assert len(auditoria.registros) == 2
+
+    def test_falha_de_auditoria_nao_desfaz_decisao(self):
+        pipeline, portao, auditoria = _pipeline()
+        laudo = pipeline.gerar("texto")
+        assert isinstance(laudo, LaudoCriado)
+
+        def falhar(**_kwargs):
+            raise RuntimeError("BigQuery fora")
+
+        auditoria.registrar = falhar
+        row = pipeline.decidir(laudo.laudo_id, "aprovado", "analista-1")
+        assert row is not None and row["status"] == "aprovado"

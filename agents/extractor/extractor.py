@@ -13,6 +13,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
+from agents.gemini import HTTP_OPTIONS
 from agents.schemas import DadosExtraidos
 
 PROMPT_PATH = Path(__file__).parent / "prompt.md"
@@ -43,6 +44,7 @@ def extrair(
         vertexai=True,
         project=project_id,
         location=VERTEX_LOCATION,
+        http_options=HTTP_OPTIONS,
     )
 
     prompt = f"""{_carregar_prompt()}

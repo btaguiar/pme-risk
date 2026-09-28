@@ -34,7 +34,7 @@ a decisão do modelo de risco de forma clara, auditável e fundamentada.
 >
 > Principais fatores:
 > - `amt_credit`: +0.045 (valor solicitado elevado em relação ao faturamento)
-> - `days_employed_abs`: +0.145 (tempo de operação moderado)
+> - `anos_operacao`: -0.120 (tempo de operação consolidado reduz o risco)
 >
 > Recomenda-se análise adicional do fluxo de caixa antes da aprovação,
 > conforme Res. CMN 4.966. O solicitante tem direito à revisão desta

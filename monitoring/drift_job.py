@@ -20,9 +20,15 @@ from collections.abc import Sequence
 
 from google.cloud import bigquery
 
+from model.features import FEATURES_TABLE
+
 LIMIAR_PSI = 0.25
 N_BINS = 10
 _EPS = 1e-6
+# Abaixo disso o PSI mede ruído, não drift: sob H0, E[PSI] ≈ (N_BINS-1)/n —
+# com n=30 já passa de 0.25, e com n < N_BINS há faixas vazias forçadas (PSI ~10).
+# Com n=100 o piso de ruído fica em ~0.09.
+N_MIN_AMOSTRAS = 100
 
 MAPEAMENTO_FEATURE_CAMPO = {
     "amt_credit": "valor_solicitado",
@@ -61,17 +67,22 @@ def psi(esperado: Sequence[float], atual: Sequence[float], n_bins: int = N_BINS)
 
 
 def calcular_drift(
-    treino: dict[str, list[float]], atual: dict[str, list[float]]
-) -> dict[str, float]:
-    """PSI por feature; feature sem dados atuais → 0.0 (sem drift mensurável)."""
-    return {feat: psi(vals, atual.get(feat, [])) for feat, vals in treino.items()}
+    treino: dict[str, list[float]],
+    atual: dict[str, list[float]],
+    min_amostras: int = N_MIN_AMOSTRAS,
+) -> dict[str, float | None]:
+    """PSI por feature; None quando há menos de `min_amostras` valores atuais."""
+    return {
+        feat: psi(vals, atual.get(feat, [])) if len(atual.get(feat, [])) >= min_amostras else None
+        for feat, vals in treino.items()
+    }
 
 
 def _carregar_treino(client: bigquery.Client, dataset: str) -> dict[str, list[float]]:
     colunas = ", ".join(MAPEAMENTO_FEATURE_CAMPO)
     query = f"""
         SELECT {colunas}
-        FROM `{client.project}.{dataset}.features`
+        FROM `{client.project}.{dataset}.{FEATURES_TABLE}`
         WHERE split = 'train'
     """
     rows = list(client.query(query).result())
@@ -106,13 +117,20 @@ def rodar(project_id: str, dataset: str, n_laudos: int = 100) -> dict:
     treino = _carregar_treino(client, dataset)
     atual = _carregar_laudos(client, dataset, n_laudos)
     psis = calcular_drift(treino, atual)
-    alertas = {feat: valor for feat, valor in psis.items() if valor > LIMIAR_PSI}
+    alertas = {
+        feat: valor for feat, valor in psis.items() if valor is not None and valor > LIMIAR_PSI
+    }
+    insuficientes = {feat: len(atual[feat]) for feat, valor in psis.items() if valor is None}
+    for feat, n in insuficientes.items():
+        logging.info("drift não medido: %s com %d amostras (< %d)", feat, n, N_MIN_AMOSTRAS)
     for feat, valor in alertas.items():
         logging.warning("drift detectado: %s PSI=%.4f > %.2f", feat, valor, LIMIAR_PSI)
     return {
         "psis": psis,
         "limiar": LIMIAR_PSI,
-        "n_laudos": n_laudos,
+        "n_laudos_max": n_laudos,
+        "n_min_amostras": N_MIN_AMOSTRAS,
+        "amostra_insuficiente": insuficientes,
         "alertas": alertas,
     }
 

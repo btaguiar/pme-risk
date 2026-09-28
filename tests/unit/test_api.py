@@ -10,6 +10,7 @@ from fastapi.testclient import TestClient
 
 from api.main import app
 from api.pipeline import LaudoCriado, Recusa, get_pipeline
+from api.routes.portao_humano import LaudoJaDecididoError
 
 _ROW = {
     "laudo_id": "id-1",
@@ -44,6 +45,8 @@ class FakePipeline:
         row = self.laudos.get(laudo_id)
         if row is None:
             return None
+        if row["status"] != "pendente":
+            raise LaudoJaDecididoError(laudo_id, row["status"])
         row.update(status=decisao, decidido_por=decidido_por, observacao_humana=observacao)
         return row
 
@@ -62,6 +65,10 @@ class TestHealthz:
         response, _ = client
         assert response.get("/healthz").status_code == 200
         assert response.get("/healthz").json() == {"status": "ok"}
+
+    def test_health_200_cloud_run(self, client):
+        response, _ = client
+        assert response.get("/health").json() == {"status": "ok"}
 
 
 class TestPostLaudos:
@@ -104,6 +111,23 @@ class TestGetLaudos:
         assert response.get("/laudos/nao-existe").status_code == 404
 
 
+class TestLlmIndisponivel:
+    def test_cota_gemini_esgotada_vira_503(self, client):
+        from google.genai import errors as genai_errors
+
+        response, fake = client
+
+        def gerar(texto: str):
+            raise genai_errors.ClientError(
+                429, {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED", "message": "x"}}
+            )
+
+        fake.gerar = gerar
+        r = response.post("/laudos", json={"texto": "clínica odontológica quer crédito"})
+        assert r.status_code == 503
+        assert r.headers["Retry-After"] == "30"
+
+
 class TestPatchDecisao:
     def test_decide_laudo_200(self, client):
         response, fake = client
@@ -116,6 +140,18 @@ class TestPatchDecisao:
         body = r.json()
         assert body["status"] == "aprovado"
         assert body["decidido_por"] == "analista-1"
+
+    def test_redecisao_409(self, client):
+        response, fake = client
+        fake.gerar("clínica odontológica quer crédito de expansão")
+        body = {"decisao": "aprovado", "decidido_por": "analista-1"}
+        assert response.patch("/laudos/id-1/decisao", json=body).status_code == 200
+        r = response.patch(
+            "/laudos/id-1/decisao",
+            json={"decisao": "rejeitado", "decidido_por": "outra-pessoa"},
+        )
+        assert r.status_code == 409
+        assert fake.laudos["id-1"]["status"] == "aprovado"
 
     def test_decisao_invalida_422(self, client):
         response, _ = client

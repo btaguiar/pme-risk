@@ -11,6 +11,7 @@ import os
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException
+from google.genai import errors as genai_errors
 from pydantic import BaseModel, Field
 
 from api.pipeline import LaudoCriado, Pipeline, Recusa, get_pipeline
@@ -39,7 +40,18 @@ class PedidoTexto(BaseModel):
 
 @router.post("/laudos", status_code=201, dependencies=[Depends(verificar_api_key)])
 def criar_laudo(pedido: PedidoTexto, pipeline: PipelineDep) -> dict[str, str]:
-    resultado = pipeline.gerar(pedido.texto)
+    try:
+        resultado = pipeline.gerar(pedido.texto)
+    except genai_errors.APIError as e:
+        # Cota/indisponibilidade do Gemini que sobreviveu ao retry (agents/gemini.py):
+        # erro transitório do lado de lá — 503 diz ao cliente para tentar depois.
+        if e.code in (429, 503):
+            raise HTTPException(
+                status_code=503,
+                detail="Serviço de LLM temporariamente indisponível; tente novamente.",
+                headers={"Retry-After": "30"},
+            ) from e
+        raise
     if isinstance(resultado, Recusa):
         raise HTTPException(status_code=422, detail={"motivo_recusa": resultado.motivo})
     assert isinstance(resultado, LaudoCriado)

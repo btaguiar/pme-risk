@@ -12,22 +12,21 @@ from google.cloud import bigquery
 
 from model.registry import ModelRegistry
 
-# Tipos esperados das features no BQML (para query parameters)
+# Tipos das features do feature set atual (model/features.py, FEATURE_COLUMNS)
 _FEATURE_TYPES: dict[str, str] = {
     "amt_income_total": "FLOAT64",
     "amt_credit": "FLOAT64",
     "amt_annuity": "FLOAT64",
     "prazo_meses_estimado": "FLOAT64",
     "anos_operacao": "FLOAT64",
-    "days_employed_abs": "INT64",
-    "occupation_type_encoded": "INT64",
+    "sem_emprego_registrado": "INT64",
     "region_rating": "INT64",
 }
 
-# Nomes físicos dos modelos BQML por algoritmo
+# Nome físico do modelo BQML por model_version do registry. Só versões treinadas
+# com o feature set atual — v1 usava outras colunas e não serve mais o pipeline.
 _BQ_MODEL_NAMES: dict[str, str] = {
-    "LOGISTIC_REG": "logreg_baseline",
-    "BOOSTED_TREE_CLASSIFIER": "boosted_tree_v1",
+    "logreg_v2": "logreg_v2",
 }
 
 
@@ -53,16 +52,16 @@ def classificar_faixa_risco(pd: float) -> str:
         return "muito_alto"
 
 
-def _resolver_bq_model_name(algoritmo: str, model_version: str) -> str:
-    """Resolve o nome físico do modelo BQML a partir do algoritmo.
+def _resolver_bq_model_name(model_version: str) -> str:
+    """Resolve o nome físico do modelo BQML a partir da versão do registry.
 
-    Levanta ValueError se o algoritmo não tiver nome mapeado.
+    Levanta ValueError se a versão não servir o feature set atual.
     """
-    name = _BQ_MODEL_NAMES.get(algoritmo)
+    name = _BQ_MODEL_NAMES.get(model_version)
     if name is None:
         raise ValueError(
-            f"Algoritmo '{algoritmo}' sem nome BQML mapeado. "
-            f"Adicione em _BQ_MODEL_NAMES. model_version={model_version}"
+            f"model_version '{model_version}' sem modelo BQML compatível com o "
+            f"feature set atual. Adicione em _BQ_MODEL_NAMES."
         )
     return name
 
@@ -108,8 +107,7 @@ def prever(
         raise RuntimeError("Nenhum modelo com status='production' no registry")
 
     model_version = model["model_version"]
-    algoritmo = model["algoritmo"]
-    bq_model_name = _resolver_bq_model_name(algoritmo, model_version)
+    bq_model_name = _resolver_bq_model_name(model_version)
 
     client = bigquery.Client(project=project_id)
     feature_params = _montar_feature_params(features)
@@ -166,8 +164,7 @@ if __name__ == "__main__":
         "amt_annuity": 15000.0,
         "prazo_meses_estimado": 20.0,
         "anos_operacao": 5.0,
-        "days_employed_abs": 1825.0,
-        "occupation_type_encoded": 42.0,
+        "sem_emprego_registrado": 0.0,
         "region_rating": 2.0,
     }
 

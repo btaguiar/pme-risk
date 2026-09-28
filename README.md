@@ -9,7 +9,7 @@ aprova ou rejeita antes do laudo final.
 
 | Fase | Status | Entrega |
 |---|---|---|
-| 1 — Modelo | ✅ Completa | LOGISTIC_REG em produção, métricas em `eval/model/results/` |
+| 1 — Modelo | ✅ Completa | LOGISTIC_REG `logreg_v2` em produção, métricas em `eval/model/results/` |
 | 2 — Laudo | ✅ Estrutural | Agentes, portão humano, auditoria, golden set F1=0.95 |
 | 3 — Produto | 🔧 Código completo | API FastAPI, drift job, Docker, scripts de deploy; checklist de aceite executado e IAM preparada — falta só o deploy Cloud Run (passo manual) |
 
@@ -44,14 +44,23 @@ pesquisa, explica e redige. O LLM não tem permissão para alterar a PD.
 
 Regra: só números reproduzíveis a partir de `eval/*/results/` (BRIEF.md).
 
-### Modelo — `eval/model/results/logreg_v1.json`
+### Modelo — `eval/model/results/logreg_v2.json` (em produção)
 
-| Métrica | Valor | Observação |
-|---|---|---|
-| KS | 0.1767 | baseline LOGISTIC_REG |
-| AUC | 0.6156 | holdout n=60.994 |
-| Brier | 0.0735 | |
-| ECE | 0.0011 | calibração |
+| Métrica | v2 | v1 (`logreg_v1.json`, aposentado) | Observação |
+|---|---|---|---|
+| KS | 0.1762 | 0.1767 | mesmo holdout, n=60.994 |
+| AUC | 0.6141 | 0.6156 | |
+| Brier | 0.0735 | 0.0735 | preditor constante na prevalência: **0.0744** |
+| ECE | 0.0013 | 0.0011 | calibração |
+
+> **Por que v2 com as mesmas métricas:** o v1 tinha skew treino/serviço que o
+> holdout não mostra — a sentinela `DAYS_EMPLOYED=365243` (18% do treino) invertia
+> o sinal de "tempo de operação" nos laudos, e o setor entrava como hash usado
+> como número contínuo (PD arbitrária por setor). O v2 corrige isso
+> (`model/sql/04_load_features_v2.sql`) sem perda offline.
+>
+> **Ressalva:** o Brier mal supera o preditor constante (0.0735 vs 0.0744) — o
+> modelo ordena risco (KS/AUC) melhor do que estima probabilidade absoluta.
 
 ### Extração — `eval/laudo/results/laudo_eval_v4.json`
 
@@ -84,7 +93,7 @@ Regra: só números reproduzíveis a partir de `eval/*/results/` (BRIEF.md).
 
 | Método | Rota | Função |
 |---|---|---|
-| `GET` | `/healthz` | liveness |
+| `GET` | `/health` (`/healthz` só local) | liveness |
 | `POST` | `/laudos` | roda o pipeline completo; laudo nasce `pendente` |
 | `GET` | `/laudos/{laudo_id}` | laudo aninhado (enriquecidos, modelo, texto, evidências) |
 | `PATCH` | `/laudos/{laudo_id}/decisao` | portão humano: `aprovado` / `corrigido` / `rejeitado` |
@@ -93,7 +102,7 @@ Regra: só números reproduzíveis a partir de `eval/*/results/` (BRIEF.md).
 # Servidor local (requer GCP_PROJECT_ID + ADC para o pipeline real)
 uv run uvicorn api.main:app --port 8000
 
-curl http://localhost:8000/healthz
+curl http://localhost:8000/health   # /healthz também (só local — Cloud Run reserva paths com "z" final)
 
 # Com API_KEY_SECRET definido, POST exige o header (GET/healthz seguem abertos)
 curl -X POST http://localhost:8000/laudos \
@@ -109,10 +118,17 @@ curl -X PATCH http://localhost:8000/laudos/<laudo_id>/decisao \
 Pedidos fora de escopo (ex.: pessoa física) retornam `422` com
 `{"detail": {"motivo_recusa": ...}}` — e a recusa entra na trilha de auditoria.
 
-**Proteção da demo:** com a env var `API_KEY_SECRET` definida (o
-`deploy_api.sh` a exige), `POST /laudos` requer header `X-API-Key` com o
-mesmo valor — sem ela responde `401`. Sem a var definida (dev local), o
-endpoint fica aberto. `GET`/`PATCH` seguem abertos para navegação da demo.
+**Proteção:** o deploy é **privado por padrão** (Cloud Run IAM — exige
+`Authorization: Bearer $(gcloud auth print-identity-token)`). Além disso, com
+`API_KEY_SECRET` definida (o `deploy_api.sh` a exige), `POST /laudos` requer
+header `X-API-Key` — sem ela responde `401`. Sem a var (dev local), fica aberto.
+
+**Portão humano:** decisões são finais — decidir um laudo que já saiu de
+`pendente` responde `409`. Cada decisão entra na `trilha_auditoria`
+(`decisao_humana` com quem, quando e observação).
+
+**Cota do Gemini:** 429/5xx são repetidos com backoff (`agents/gemini.py`);
+se persistir, `POST /laudos` responde `503` com `Retry-After`.
 
 **Corte de escopo deliberado (SPEC §5.1):** o laudo final é **só JSON** —
 não há endpoint de HTML/PDF nesta fase.
@@ -125,11 +141,13 @@ contra a distribuição de treino (PSI por quantis). Acima de 0.25 → log
 
 ```bash
 # Local (requer ADC + GCP_PROJECT_ID)
-uv run python monitoring/drift_job.py
+uv run python -m monitoring.drift_job
 ```
 
 No Cloud Run, roda como Job disparado por Cloud Scheduler semanal
-(`infra/scripts/deploy_drift.sh`). Categóricas (porte, UF, setor) ficam de
+(`infra/scripts/deploy_drift.sh`). Com menos de 100 laudos por feature o
+PSI não é calculado (`amostra_insuficiente`): com n pequeno ele mede ruído
+(n=30 → 68% de falso alarme em simulação; n=100 → 1%). Categóricas (porte, UF, setor) ficam de
 fora: sem análogo honesto no Home Credit (limite documentado).
 
 ## Deploy (passo manual)
@@ -153,12 +171,12 @@ smoke 401/404/201 e integração e2e contra GCP real). O deploy exige:
 
 ```bash
 export GCP_PROJECT_ID=... RUN_SERVICE_ACCOUNT=... API_KEY_SECRET=...
-bash infra/scripts/deploy_api.sh     # API no Cloud Run (--allow-unauthenticated p/ demo)
+bash infra/scripts/deploy_api.sh     # API no Cloud Run, privada (ALLOW_UNAUTHENTICATED=1 p/ demo pública)
 bash infra/scripts/deploy_drift.sh   # Job de drift + Scheduler semanal
 ```
 
-Pós-deploy: repetir o smoke (`healthz`, `401` sem key, `404` em
-`PATCH /laudos/id-inexistente/decisao`, `201` com key) contra a URL pública.
+Pós-deploy: repetir o smoke com `Authorization: Bearer $(gcloud auth print-identity-token)` (`/health`, `401` sem key, `404` em
+`PATCH /laudos/id-inexistente/decisao`, `201` com key, `409` ao re-decidir) contra a URL do serviço.
 
 Pré-requisitos já verificados (2026-09-27): tabelas `features`, `laudos`,
 `model_registry`, `trilha_auditoria` no BigQuery; budget alert
@@ -196,10 +214,10 @@ uv run ruff check .
 bash infra/scripts/check_secrets.sh
 
 # Eval do modelo
-GCP_PROJECT_ID=<seu-projeto> uv run python eval/model/run_eval.py
+GCP_PROJECT_ID=<seu-projeto> uv run python -m eval.model.run_eval
 
 # Eval da extração
-GCP_PROJECT_ID=<seu-projeto> uv run python eval/laudo/run_eval.py
+GCP_PROJECT_ID=<seu-projeto> uv run python -m eval.laudo.run_eval
 ```
 
 **Pre-commit hook:** `infra/scripts/check_secrets.py` roda automaticamente

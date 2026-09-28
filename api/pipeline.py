@@ -34,25 +34,21 @@ _log = logging.getLogger(__name__)
 # Sem inventar risco por UF (SPEC §3.2: "não geografia real").
 _REGION_RATING_DEFAULT = 2
 
+# Features com valor fixo no serviço (não vêm do pedido). A atribuição delas só
+# mede a distância até a média do treino — não diz nada sobre o solicitante, e o
+# Redator a narrava como fato ("ausência de registro de empregados"). Entram na
+# PD, mas não na lista de fatores do laudo.
+FEATURES_CONSTANTES_NO_SERVICO = frozenset({"sem_emprego_registrado", "region_rating"})
+
 # Prazo default quando o pedido não menciona (mesma base do clip em 01_load_features.sql)
 _PRAZO_DEFAULT_MESES = 36
 
 
-def _fnv1a_64_signed(texto: str) -> int:
-    """FNV-1a 64-bit com interpretação assinada — determinístico para `setor`.
-
-    Não exige paridade exata com FARM_FINGERPRINT do BigQuery: o mapeamento
-    setor → occupation_type já é aproximação documentada (SPEC §3.2).
-    """
-    h = 0xCBF29CE484222325
-    for byte in texto.encode("utf-8"):
-        h ^= byte
-        h = (h * 0x100000001B3) & 0xFFFFFFFFFFFFFFFF
-    return h - (1 << 64) if h >= (1 << 63) else h
-
-
 def pedido_para_features(pedido: PedidoCredito) -> dict[str, float]:
-    """Mapeia PedidoCredito (PME) → vetor de features do modelo (Home Credit)."""
+    """Mapeia PedidoCredito (PME) → vetor de features do modelo (Home Credit, v2).
+
+    Setor não entra: sem análogo honesto no treino (model/features.py).
+    """
     prazo = min(pedido.prazo_meses or _PRAZO_DEFAULT_MESES, 120)
     anos = min(max(pedido.anos_operacao, 0), 60)
     return {
@@ -61,8 +57,8 @@ def pedido_para_features(pedido: PedidoCredito) -> dict[str, float]:
         "amt_annuity": float(pedido.valor_solicitado) / prazo,
         "prazo_meses_estimado": float(prazo),
         "anos_operacao": float(anos),
-        "days_employed_abs": round(anos * 365.25, 2),
-        "occupation_type_encoded": float(abs(_fnv1a_64_signed(pedido.setor)) % 100),
+        # PME em operação nunca está na sentinela "sem vínculo" do Home Credit
+        "sem_emprego_registrado": 0.0,
         "region_rating": float(_REGION_RATING_DEFAULT),
     }
 
@@ -140,7 +136,11 @@ class Pipeline:
         resultado = ResultadoModelo(
             pd=predicao.pd,
             faixa_risco=predicao.faixa_risco,
-            fatores=[(nome, contrib) for nome, contrib in predicao.fatores],
+            fatores=[
+                (nome, contrib)
+                for nome, contrib in predicao.fatores
+                if nome not in FEATURES_CONSTANTES_NO_SERVICO
+            ],
             model_version=predicao.model_version,
         )
         redacao = self._redigir_fn(enriquecidos, resultado, project_id=self.project_id)
@@ -180,8 +180,32 @@ class Pipeline:
         decidido_por: str,
         observacao: str | None = None,
     ) -> dict | None:
+        """Portão humano + registro da decisão na trilha append-only (SPEC §4.4).
+
+        Propaga LaudoJaDecididoError — decisões são finais.
+        """
         row = self._portao.decidir(laudo_id, decisao, decidido_por, observacao)
-        return row or None
+        if not row:
+            return None
+        decisao_humana = {
+            "decisao": decisao,
+            "decidido_por": decidido_por,
+            "decidido_em": str(row.get("decidido_em")),
+            "observacao": observacao,
+        }
+        try:
+            self._auditoria.registrar(
+                laudo_id=laudo_id,
+                pedido_bruto=row.get("pedido_bruto") or "",
+                model_version=json.loads(row["resultado_modelo_json"]).get("model_version"),
+                prompts_usados={},
+                decisao_humana=json.dumps(decisao_humana, ensure_ascii=False),
+                etapas=[{"etapa": "decisao_humana", "timestamp": _agora()}],
+            )
+        except Exception:
+            # Mesma política do gerar(): a decisão já está persistida em `laudos`.
+            _log.exception("Falha ao registrar decisão do laudo %s na auditoria", laudo_id)
+        return row
 
 
 def _agora() -> str:

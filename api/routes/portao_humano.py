@@ -9,6 +9,17 @@ from datetime import UTC, datetime
 
 from google.cloud import bigquery
 
+DECISOES_VALIDAS = ("aprovado", "corrigido", "rejeitado")
+
+
+class LaudoJaDecididoError(Exception):
+    """Decisão sobre laudo que não está mais 'pendente' — decisões são finais."""
+
+    def __init__(self, laudo_id: str, status: str) -> None:
+        super().__init__(f"Laudo {laudo_id} já decidido (status={status})")
+        self.laudo_id = laudo_id
+        self.status = status
+
 
 class PortaoHumano:
     """Gerencia decisões humanas sobre laudos no BigQuery."""
@@ -38,8 +49,11 @@ class PortaoHumano:
         decisao: str,
         decidido_por: str,
         observacao: str | None = None,
-    ) -> dict:
-        """Registra decisão humana sobre o laudo.
+    ) -> dict | None:
+        """Registra decisão humana sobre o laudo — só a partir de 'pendente'.
+
+        A transição é atômica: o UPDATE só casa com laudo ainda pendente, então
+        duas decisões concorrentes não se sobrescrevem.
 
         Args:
             laudo_id: identificador do laudo
@@ -48,9 +62,12 @@ class PortaoHumano:
             observacao: observação opcional
 
         Returns:
-            Laudo atualizado
+            Laudo atualizado, ou None se o laudo não existe.
+
+        Raises:
+            LaudoJaDecididoError: o laudo já saiu de 'pendente'.
         """
-        if decisao not in ("aprovado", "corrigido", "rejeitado"):
+        if decisao not in DECISOES_VALIDAS:
             raise ValueError(f"Decisão inválida: {decisao}. Use aprovado/corrigido/rejeitado.")
 
         query = f"""
@@ -60,7 +77,7 @@ class PortaoHumano:
                 decidido_em = @decidido_em,
                 decisao = @decisao,
                 observacao_humana = @observacao
-            WHERE laudo_id = @laudo_id
+            WHERE laudo_id = @laudo_id AND status = 'pendente'
         """
         job_config = bigquery.QueryJobConfig(
             query_parameters=[
@@ -73,9 +90,15 @@ class PortaoHumano:
                 bigquery.ScalarQueryParameter("laudo_id", "STRING", laudo_id),
             ]
         )
-        self.client.query(query, job_config=job_config).result()
+        job = self.client.query(query, job_config=job_config)
+        job.result()
 
-        return self.obter(laudo_id) or {}
+        row = self.obter(laudo_id)
+        if row is None:
+            return None
+        if not job.num_dml_affected_rows:
+            raise LaudoJaDecididoError(laudo_id, row["status"])
+        return row
 
     def criar(
         self,

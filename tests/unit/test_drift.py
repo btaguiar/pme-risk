@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import random
 
-from monitoring.drift_job import LIMIAR_PSI, calcular_drift, psi
+from monitoring.drift_job import LIMIAR_PSI, N_MIN_AMOSTRAS, calcular_drift, psi
 
 
 def _amostra(n: int, mu: float, sigma: float, seed: int) -> list[float]:
@@ -50,4 +50,16 @@ class TestCalcularDrift:
     def test_feature_sem_dados_atuais_nao_quebra(self):
         esp = _amostra(100, 0, 1, seed=1)
         drift = calcular_drift(treino={"amt_credit": esp}, atual={})
-        assert drift["amt_credit"] == 0.0
+        assert drift["amt_credit"] is None
+
+    def test_amostra_pequena_nao_mede_drift(self):
+        # 5 laudos idênticos ao treino dariam PSI ~10 (faixas vazias) — não é drift
+        esp = _amostra(5000, 0, 1, seed=1)
+        drift = calcular_drift(treino={"amt_credit": esp}, atual={"amt_credit": esp[:5]})
+        assert drift["amt_credit"] is None
+
+    def test_amostra_minima_sem_drift_fica_abaixo_do_limiar(self):
+        esp = _amostra(5000, 0, 1, seed=1)
+        atu = _amostra(N_MIN_AMOSTRAS, 0, 1, seed=7)
+        drift = calcular_drift(treino={"amt_credit": esp}, atual={"amt_credit": atu})
+        assert drift["amt_credit"] is not None and drift["amt_credit"] < LIMIAR_PSI

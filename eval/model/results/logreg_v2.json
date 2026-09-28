@@ -1,0 +1,11 @@
+{
+  "model_version": "logreg_v2",
+  "algoritmo": "LOGISTIC_REG",
+  "feature_set_version": "v2_sem_sentinela",
+  "n_amostras": 60994,
+  "ks": 0.1762,
+  "auc": 0.6141,
+  "brier": 0.0735,
+  "brier_ingenuo": 0.0744,
+  "ece": 0.0013
+}

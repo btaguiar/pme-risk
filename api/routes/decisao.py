@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from api.pipeline import Pipeline, get_pipeline
+from api.routes.portao_humano import LaudoJaDecididoError
 
 router = APIRouter(tags=["laudos"])
 
@@ -22,7 +23,10 @@ class DecisaoRequest(BaseModel):
 
 @router.patch("/laudos/{laudo_id}/decisao")
 def decidir_laudo(laudo_id: str, body: DecisaoRequest, pipeline: PipelineDep) -> dict:
-    row = pipeline.decidir(laudo_id, body.decisao, body.decidido_por, body.observacao)
+    try:
+        row = pipeline.decidir(laudo_id, body.decisao, body.decidido_por, body.observacao)
+    except LaudoJaDecididoError as e:
+        raise HTTPException(status_code=409, detail=f"Laudo já decidido (status={e.status})") from e
     if row is None:
         raise HTTPException(status_code=404, detail="Laudo não encontrado")
     return {

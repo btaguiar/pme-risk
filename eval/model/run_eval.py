@@ -13,10 +13,9 @@ from pathlib import Path
 from google.cloud import bigquery
 from scipy import stats
 
-RESULTS_DIR = Path(__file__).parent / "results"
+from model.features import FEATURE_COLUMNS, FEATURE_SET_VERSION, FEATURES_TABLE
 
-# Deve corresponder a FEATURE_SET_VERSION em model/features.py
-FEATURE_SET_VERSION = "v1_hipotese"
+RESULTS_DIR = Path(__file__).parent / "results"
 
 
 def calcular_ks(y_true: list[int], y_score: list[float]) -> float:
@@ -47,6 +46,15 @@ def calcular_brier(y_true: list[int], y_score: list[float]) -> float:
     if n == 0:
         return 0.0
     return sum((s - t) ** 2 for t, s in zip(y_true, y_score, strict=True)) / n
+
+
+def calcular_brier_ingenuo(y_true: list[int]) -> float:
+    """Brier do preditor constante na prevalência — piso que o modelo precisa bater."""
+    n = len(y_true)
+    if n == 0:
+        return 0.0
+    p = sum(y_true) / n
+    return p * (1 - p)
 
 
 def calcular_ece(y_true: list[int], y_score: list[float], n_bins: int = 10) -> float:
@@ -84,10 +92,8 @@ def obter_predicoes(
         FROM ML.PREDICT(
           MODEL `{project_id}.{dataset}.{bq_model_name}`,
           (
-            SELECT amt_income_total, amt_credit, amt_annuity,
-                   prazo_meses_estimado, anos_operacao, days_employed_abs,
-                   occupation_type_encoded, region_rating, target
-            FROM `{project_id}.{dataset}.features`
+            SELECT {", ".join(FEATURE_COLUMNS)}, target
+            FROM `{project_id}.{dataset}.{FEATURES_TABLE}`
             WHERE split = 'holdout'
           )
         )
@@ -116,12 +122,13 @@ def avaliar_modelo(
         "ks": round(calcular_ks(y_true, y_score), 4),
         "auc": round(calcular_auc(y_true, y_score), 4),
         "brier": round(calcular_brier(y_true, y_score), 4),
+        "brier_ingenuo": round(calcular_brier_ingenuo(y_true), 4),
         "ece": round(calcular_ece(y_true, y_score), 4),
     }
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     output_path = RESULTS_DIR / f"{model_version}.json"
-    with open(output_path, "w") as f:
+    with open(output_path, "w", encoding="utf-8") as f:
         json.dump(metrics, f, indent=2)
 
     return metrics
@@ -133,8 +140,8 @@ if __name__ == "__main__":
     result = avaliar_modelo(
         project_id=os.environ["GCP_PROJECT_ID"],
         dataset=os.environ.get("BQ_DATASET", "pme_risk"),
-        bq_model_name="logreg_baseline",
-        model_version="logreg_v1",
+        bq_model_name="logreg_v2",
+        model_version="logreg_v2",
         algoritmo="LOGISTIC_REG",
     )
     print(json.dumps(result, indent=2))

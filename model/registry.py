@@ -29,6 +29,7 @@ STATUS_BASELINE = "baseline"
 STATUS_PRODUCTION = "production"
 STATUS_CANDIDATE = "candidate"
 STATUS_CANDIDATE_REJECTED = "candidate_rejected"
+STATUS_RETIRED = "retired"
 
 
 class ModelRegistry:
@@ -50,22 +51,38 @@ class ModelRegistry:
         status: str = STATUS_CANDIDATE,
         nota: str | None = None,
     ) -> None:
-        """Registra um modelo no registry."""
-        row = {
-            "model_version": model_version,
-            "algoritmo": algoritmo,
-            "feature_set_version": feature_set_version,
-            "treinado_em": datetime.now(UTC).isoformat(),
-            "ks": ks,
-            "auc": auc,
-            "brier": brier,
-            "ece": ece,
-            "status": status,
-            "nota": nota,
-        }
-        errors = self.client.insert_rows_json(self.table_id, [row])
-        if errors:
-            raise RuntimeError(f"Erro ao inserir no registry: {errors}")
+        """Registra um modelo no registry.
+
+        INSERT via DML, não streaming: linhas no streaming buffer não aceitam o
+        UPDATE de promover() por até ~90 min.
+        """
+        query = f"""
+            INSERT INTO `{self.table_id}`
+            (model_version, algoritmo, feature_set_version, treinado_em,
+             ks, auc, brier, ece, status, nota)
+            VALUES
+            (@model_version, @algoritmo, @feature_set_version, @treinado_em,
+             @ks, @auc, @brier, @ece, @status, @nota)
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter("model_version", "STRING", model_version),
+                bigquery.ScalarQueryParameter("algoritmo", "STRING", algoritmo),
+                bigquery.ScalarQueryParameter(
+                    "feature_set_version", "STRING", feature_set_version
+                ),
+                bigquery.ScalarQueryParameter(
+                    "treinado_em", "TIMESTAMP", datetime.now(UTC).isoformat()
+                ),
+                bigquery.ScalarQueryParameter("ks", "FLOAT64", ks),
+                bigquery.ScalarQueryParameter("auc", "FLOAT64", auc),
+                bigquery.ScalarQueryParameter("brier", "FLOAT64", brier),
+                bigquery.ScalarQueryParameter("ece", "FLOAT64", ece),
+                bigquery.ScalarQueryParameter("status", "STRING", status),
+                bigquery.ScalarQueryParameter("nota", "STRING", nota),
+            ]
+        )
+        self.client.query(query, job_config=job_config).result()
 
     def obter_producao(self) -> dict | None:
         """Retorna o modelo com status='production'."""
@@ -89,7 +106,7 @@ class ModelRegistry:
         return [dict(row) for row in self.client.query(query).result()]
 
     def promover(self, model_version: str) -> None:
-        """Promove um modelo para production (rebaixa o anterior)."""
+        """Promove um modelo para production (o anterior vira 'retired')."""
         # Rebaixa o modelo atual de produção
         query_rebaixar = f"""
             UPDATE `{self.table_id}`
@@ -98,7 +115,7 @@ class ModelRegistry:
         """
         config_rebaixar = bigquery.QueryJobConfig(
             query_parameters=[
-                bigquery.ScalarQueryParameter("novo_status", "STRING", STATUS_CANDIDATE_REJECTED),
+                bigquery.ScalarQueryParameter("novo_status", "STRING", STATUS_RETIRED),
                 bigquery.ScalarQueryParameter("status_atual", "STRING", STATUS_PRODUCTION),
             ]
         )
