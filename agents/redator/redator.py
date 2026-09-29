@@ -93,6 +93,7 @@ def chamar_redator(prompt: str, project_id: str | None = None) -> ResultadoRedac
             response_mime_type="application/json",
             response_schema=ResultadoRedacao,
             temperature=0.3,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         ),
     )
     resultado = json.loads(response.text)

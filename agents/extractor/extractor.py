@@ -66,6 +66,7 @@ def extrair(
             response_mime_type="application/json",
             response_schema=DadosExtraidos,
             temperature=0.0,
+            automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         ),
     )
 
