@@ -1,5 +1,14 @@
 # API pme-risk — Cloud Run (SPEC §5.2)
 # Credenciais: ADC no runtime via service account do Cloud Run (sem API key)
+
+# Frontend Aval (Vite) — só o dist/ vai para a imagem final
+FROM node:22-slim AS frontend
+WORKDIR /frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim
 
 WORKDIR /app
@@ -11,6 +20,7 @@ COPY agents/ agents/
 COPY api/ api/
 COPY model/ model/
 COPY monitoring/ monitoring/
+COPY --from=frontend /frontend/dist frontend/dist
 
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \

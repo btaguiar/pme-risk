@@ -120,19 +120,46 @@ class Pipeline:
         self._enriquecer_fn = enriquecer_fn
         self._prever_fn = prever_fn
         self._redigir_fn = redigir_fn
-        self._portao = portao or PortaoHumano(project_id, dataset)
-        self._auditoria = auditoria or TrilhaAuditoria(project_id, dataset)
+        self._portao = portao
+        self._auditoria = auditoria
 
-    def gerar(self, texto: str) -> LaudoCriado | Recusa:
-        """Roda o pipeline completo até `status='pendente'` (SPEC §5.1)."""
+    @property
+    def portao(self) -> PortaoHumano:
+        """Portão humano — criado só no primeiro uso (casca do SPA não precisa de GCP)."""
+        if self._portao is None:
+            if not self.project_id:
+                raise RuntimeError("GCP_PROJECT_ID não configurado")
+            self._portao = PortaoHumano(self.project_id, self.dataset)
+        return self._portao
+
+    @property
+    def auditoria(self) -> TrilhaAuditoria:
+        """Trilha de auditoria — criada só no primeiro uso."""
+        if self._auditoria is None:
+            if not self.project_id:
+                raise RuntimeError("GCP_PROJECT_ID não configurado")
+            self._auditoria = TrilhaAuditoria(self.project_id, self.dataset)
+        return self._auditoria
+
+    def gerar(self, texto: str, prazo_meses: int | None = None) -> LaudoCriado | Recusa:
+        """Roda o pipeline completo até `status='pendente'` (SPEC §5.1).
+
+        `prazo_meses` vem de campo estruturado do formulário e prevalece sobre o
+        prazo que o Extrator ler no texto; fica registrado no pedido bruto.
+        """
         etapas: list[dict[str, str]] = []
+        pedido_bruto = texto if prazo_meses is None else f"{texto}\n\n[Prazo solicitado: {prazo_meses} meses]"
         extraidos = self._extrair_fn(texto, project_id=self.project_id)
         etapas.append({"etapa": "extrator", "timestamp": _agora()})
 
+        if prazo_meses is not None and extraidos.pedido is not None:
+            pedido = extraidos.pedido.model_copy(update={"prazo_meses": prazo_meses})
+            extraidos = extraidos.model_copy(update={"pedido": pedido})
+
         if extraidos.fora_de_escopo:
-            self._auditoria.registrar(
+            self.auditoria.registrar(
                 laudo_id="-",
-                pedido_bruto=texto,
+                pedido_bruto=pedido_bruto,
                 model_version=None,
                 prompts_usados=_hashes_prompt(),
                 decisao_humana=None,
@@ -152,18 +179,18 @@ class Pipeline:
         etapas.append({"etapa": "redator", "timestamp": _agora()})
 
         laudo_id = str(uuid.uuid4())
-        self._portao.criar(
+        self.portao.criar(
             laudo_id=laudo_id,
-            pedido_bruto=texto,
+            pedido_bruto=pedido_bruto,
             enriquecidos_json=enriquecidos.model_dump_json(),
             resultado_modelo_json=resultado.model_dump_json(),
             texto=redacao.texto,
             evidencias_json=json.dumps(redacao.evidencias, ensure_ascii=False),
         )
         try:
-            self._auditoria.registrar(
+            self.auditoria.registrar(
                 laudo_id=laudo_id,
-                pedido_bruto=texto,
+                pedido_bruto=pedido_bruto,
                 model_version=predicao.model_version,
                 prompts_usados=_hashes_prompt(),
                 decisao_humana=None,
@@ -176,10 +203,10 @@ class Pipeline:
         return LaudoCriado(laudo_id=laudo_id)
 
     def obter(self, laudo_id: str) -> dict | None:
-        return self._portao.obter(laudo_id)
+        return self.portao.obter(laudo_id)
 
     def listar(self, limite: int = 20) -> list[dict]:
-        return self._portao.listar(limite)
+        return self.portao.listar(limite)
 
     def decidir(
         self,
@@ -192,7 +219,7 @@ class Pipeline:
 
         Propaga LaudoJaDecididoError — decisões são finais.
         """
-        row = self._portao.decidir(laudo_id, decisao, decidido_por, observacao)
+        row = self.portao.decidir(laudo_id, decisao, decidido_por, observacao)
         if not row:
             return None
         decisao_humana = {
@@ -202,7 +229,7 @@ class Pipeline:
             "observacao": observacao,
         }
         try:
-            self._auditoria.registrar(
+            self.auditoria.registrar(
                 laudo_id=laudo_id,
                 pedido_bruto=row.get("pedido_bruto") or "",
                 model_version=json.loads(row["resultado_modelo_json"]).get("model_version"),
@@ -224,6 +251,6 @@ def _agora() -> str:
 def get_pipeline() -> Pipeline:
     """Dependência FastAPI — instância real (GCP) para produção."""
     return Pipeline(
-        os.environ["GCP_PROJECT_ID"],
+        os.environ.get("GCP_PROJECT_ID", ""),
         os.environ.get("BQ_DATASET", "pme_risk"),
     )

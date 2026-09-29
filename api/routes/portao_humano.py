@@ -43,6 +43,24 @@ class PortaoHumano:
         results = list(self.client.query(query, job_config=job_config).result())
         return dict(results[0]) if results else None
 
+    def listar(self, limite: int = 20) -> list[dict]:
+        """Retorna os laudos mais recentes (sem texto, para a listagem do front)."""
+        query = f"""
+            SELECT laudo_id, status, criado_em, decidido_em, decidido_por,
+                   resultado_modelo_json, enriquecidos_json
+            FROM `{self.table_id}`
+            ORDER BY criado_em DESC
+            LIMIT @limite
+        """
+        job_config = bigquery.QueryJobConfig(
+            query_parameters=[
+                bigquery.ScalarQueryParameter(
+                    "limite", "INT64", max(1, min(int(limite), 100))
+                ),
+            ]
+        )
+        return [dict(row) for row in self.client.query(query, job_config=job_config).result()]
+
     def decidir(
         self,
         laudo_id: str,

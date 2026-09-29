@@ -25,13 +25,17 @@ _ROW = {
     "criado_em": "2026-09-27T00:00:00Z",
 }
 
+PEDIDO = {"texto": "clínica odontológica quer crédito", "prazo_meses": 24}
+
 
 class FakePipeline:
     def __init__(self) -> None:
         self.laudos: dict[str, dict] = {}
         self.recusa: Recusa | None = None
+        self.prazos: list[int | None] = []
 
-    def gerar(self, texto: str) -> LaudoCriado | Recusa:
+    def gerar(self, texto: str, prazo_meses: int | None = None) -> LaudoCriado | Recusa:
+        self.prazos.append(prazo_meses)
         if self.recusa is not None:
             return self.recusa
         laudo_id = "id-1"
@@ -40,6 +44,10 @@ class FakePipeline:
 
     def obter(self, laudo_id: str) -> dict | None:
         return self.laudos.get(laudo_id)
+
+    def listar(self, limite: int = 20) -> list[dict]:
+        rows = sorted(self.laudos.values(), key=lambda r: r.get("criado_em") or "", reverse=True)
+        return rows[:limite]
 
     def decidir(self, laudo_id, decisao, decidido_por, observacao=None):
         row = self.laudos.get(laudo_id)
@@ -74,7 +82,7 @@ class TestHealthz:
 class TestPostLaudos:
     def test_cria_laudo_201(self, client):
         response, fake = client
-        r = response.post("/laudos", json={"texto": "clínica odontológica quer crédito"})
+        r = response.post("/laudos", json=PEDIDO)
         assert r.status_code == 201
         body = r.json()
         assert body["laudo_id"] == "id-1"
@@ -84,14 +92,29 @@ class TestPostLaudos:
     def test_recusa_422(self, client):
         response, fake = client
         fake.recusa = Recusa(motivo="pessoa física")
-        r = response.post("/laudos", json={"texto": "quero empréstimo pessoal"})
+        r = response.post("/laudos", json={"texto": "quero empréstimo pessoal", "prazo_meses": 12})
         assert r.status_code == 422
         assert r.json()["detail"] == {"motivo_recusa": "pessoa física"}
 
     def test_texto_curto_422(self, client):
         response, _ = client
-        r = response.post("/laudos", json={"texto": "curto"})
+        r = response.post("/laudos", json={"texto": "curto", "prazo_meses": 12})
         assert r.status_code == 422
+
+    def test_prazo_repassado_ao_pipeline(self, client):
+        response, fake = client
+        response.post("/laudos", json=PEDIDO)
+        assert fake.prazos == [24]
+
+    @pytest.mark.parametrize("prazo", [None, 0, 121])
+    def test_prazo_obrigatorio_entre_1_e_120(self, client, prazo):
+        response, fake = client
+        corpo = {"texto": PEDIDO["texto"]}
+        if prazo is not None:
+            corpo["prazo_meses"] = prazo
+        r = response.post("/laudos", json=corpo)
+        assert r.status_code == 422
+        assert fake.laudos == {}
 
 
 class TestGetLaudos:
@@ -117,13 +140,13 @@ class TestLlmIndisponivel:
 
         response, fake = client
 
-        def gerar(texto: str):
+        def gerar(texto: str, prazo_meses: int | None = None):
             raise genai_errors.ClientError(
                 429, {"error": {"code": 429, "status": "RESOURCE_EXHAUSTED", "message": "x"}}
             )
 
         fake.gerar = gerar
-        r = response.post("/laudos", json={"texto": "clínica odontológica quer crédito"})
+        r = response.post("/laudos", json=PEDIDO)
         assert r.status_code == 503
         assert r.headers["Retry-After"] == "30"
 
@@ -176,13 +199,13 @@ class TestApiKey:
     def test_sem_env_endereco_aberto(self, client, monkeypatch):
         monkeypatch.delenv("API_KEY_SECRET", raising=False)
         response, _ = client
-        r = response.post("/laudos", json={"texto": "clínica odontológica quer crédito"})
+        r = response.post("/laudos", json=PEDIDO)
         assert r.status_code == 201
 
     def test_com_env_sem_key_401(self, client, monkeypatch):
         monkeypatch.setenv("API_KEY_SECRET", "s3gredo-demo")
         response, _ = client
-        r = response.post("/laudos", json={"texto": "clínica odontológica quer crédito"})
+        r = response.post("/laudos", json=PEDIDO)
         assert r.status_code == 401
 
     def test_com_env_key_errada_401(self, client, monkeypatch):
@@ -190,7 +213,7 @@ class TestApiKey:
         response, _ = client
         r = response.post(
             "/laudos",
-            json={"texto": "clínica odontológica quer crédito"},
+            json=PEDIDO,
             headers={"X-API-Key": "errada"},
         )
         assert r.status_code == 401
@@ -200,7 +223,7 @@ class TestApiKey:
         response, fake = client
         r = response.post(
             "/laudos",
-            json={"texto": "clínica odontológica quer crédito"},
+            json=PEDIDO,
             headers={"X-API-Key": "s3gredo-demo"},
         )
         assert r.status_code == 201
@@ -212,3 +235,116 @@ class TestApiKey:
         fake.gerar("clínica odontológica quer crédito de expansão")
         r = response.get("/laudos/id-1")
         assert r.status_code == 200
+
+
+class TestListarLaudos:
+    def test_lista_vazia(self, client):
+        response, _ = client
+        r = response.get("/laudos")
+        assert r.status_code == 200
+        assert r.json() == []
+
+    def test_lista_com_resumo(self, client):
+        response, fake = client
+        fake.gerar("clínica odontológica quer crédito de expansão")
+        r = response.get("/laudos")
+        assert r.status_code == 200
+        body = r.json()
+        assert len(body) == 1
+        item = body[0]
+        assert item["laudo_id"] == "id-1"
+        assert item["status"] == "pendente"
+        assert item["pd"] == 0.07
+        assert item["faixa_risco"] == "medio"
+        assert item["pedido"]["porte"] == "ME"
+        assert "texto" not in item
+
+    def test_respeita_limite(self, client):
+        response, fake = client
+        for i in range(3):
+            fake.gerar(f"pedido numero {i}")
+            fake.laudos[f"id-{i}"] = {**_ROW, "laudo_id": f"id-{i}"}
+        r = response.get("/laudos?limite=2")
+        assert r.status_code == 200
+        assert len(r.json()) == 2
+
+
+class TestFrontend:
+    """Navegador recebe a casca do SPA; cliente de API recebe JSON.
+
+    URLs de página são reais (/laudos, /laudos/{id}) para serem compartilháveis —
+    a negociação de conteúdo decide HTML vs JSON pelo header Accept.
+    """
+
+    HTML = {"Accept": "text/html,application/xhtml+xml"}
+
+    @pytest.fixture(autouse=True)
+    def dist_falso(self, tmp_path, monkeypatch):
+        """Build do Vite simulado — os testes não dependem de Node."""
+        dist = tmp_path / "dist"
+        (dist / "assets").mkdir(parents=True)
+        (dist / "index.html").write_text("<title>Aval · pme-risk</title>", encoding="utf-8")
+        (dist / "assets" / "index-abc.js").write_text("console.log(1)", encoding="utf-8")
+        (dist / "favicon.svg").write_text("<svg/>", encoding="utf-8")
+        (tmp_path / "segredo.txt").write_text("nao deve vazar", encoding="utf-8")
+        monkeypatch.setattr("api.frontend.DIST_DIR", dist.resolve())
+
+    def test_index_html_servido(self, client):
+        response, _ = client
+        r = response.get("/")
+        assert r.status_code == 200
+        assert "pme-risk" in r.text
+        assert "text/html" in r.headers["content-type"]
+
+    def test_assets_estaticos(self, client):
+        response, _ = client
+        assert response.get("/assets/index-abc.js").status_code == 200
+
+    def test_rota_do_spa_devolve_casca(self, client):
+        response, _ = client
+        r = response.get("/novo", headers=self.HTML)
+        assert r.status_code == 200
+        assert "pme-risk" in r.text
+
+    def test_path_traversal_nao_sai_do_dist(self, client):
+        response, _ = client
+        r = response.get("/..%2Fsegredo.txt")
+        assert "nao deve vazar" not in r.text
+
+    def test_lista_html_para_navegador(self, client):
+        response, _ = client
+        r = response.get("/laudos", headers=self.HTML)
+        assert r.status_code == 200
+        assert "text/html" in r.headers["content-type"]
+        assert "pme-risk" in r.text
+
+    def test_laudo_html_para_navegador_mesmo_inexistente(self, client):
+        response, _ = client
+        r = response.get("/laudos/qualquer-id", headers=self.HTML)
+        assert r.status_code == 200
+        assert "text/html" in r.headers["content-type"]
+        assert "pme-risk" in r.text
+
+    def test_casca_varia_por_accept(self, client):
+        """Sem Vary: Accept, o cache do navegador serve HTML ao fetch() que pede JSON."""
+        response, _ = client
+        r = response.get("/laudos/qualquer-id", headers=self.HTML)
+        assert "accept" in r.headers["vary"].lower()
+
+    def test_barra_final_nao_e_mais_404(self, client):
+        response, _ = client
+        r = response.get("/laudos/", headers=self.HTML)
+        assert r.status_code == 200
+        assert "pme-risk" in r.text
+
+    def test_json_continua_json(self, client):
+        response, fake = client
+        fake.gerar("clínica odontológica quer crédito de expansão")
+        r = response.get("/laudos", headers={"Accept": "application/json"})
+        assert r.headers["content-type"].startswith("application/json")
+        r2 = response.get("/laudos/id-1", headers={"Accept": "application/json"})
+        assert r2.json()["laudo_id"] == "id-1"
+
+    def test_favicon_svg(self, client):
+        response, _ = client
+        assert response.get("/favicon.svg").status_code == 200

@@ -179,6 +179,25 @@ class TestPipelineGerar:
         assert feats["amt_credit"] == 300_000.0
         assert feats["amt_income_total"] == 2_000_000.0
 
+    def test_prazo_do_formulario_prevalece_sobre_o_extraido(self):
+        import json
+
+        capturadas: list[dict[str, float]] = []
+        pipeline, portao, auditoria = _pipeline(features_capturadas=capturadas)
+        resultado = pipeline.gerar("texto do pedido", prazo_meses=12)  # extraído: 36
+        assert isinstance(resultado, LaudoCriado)
+        assert capturadas[0]["prazo_meses_estimado"] == 12.0
+        row = portao.obter(resultado.laudo_id)
+        assert json.loads(row["enriquecidos_json"])["extraidos"]["pedido"]["prazo_meses"] == 12
+        assert "Prazo solicitado: 12 meses" in row["pedido_bruto"]
+        assert "Prazo solicitado: 12 meses" in auditoria.registros[0]["pedido_bruto"]
+
+    def test_sem_prazo_do_formulario_mantem_o_extraido(self):
+        capturadas: list[dict[str, float]] = []
+        pipeline, _, _ = _pipeline(features_capturadas=capturadas)
+        pipeline.gerar("texto do pedido")
+        assert capturadas[0]["prazo_meses_estimado"] == 36.0
+
 
 class TestPipelineDecisao:
     def test_decidir_encaminha_para_portao(self):

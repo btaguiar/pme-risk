@@ -1,0 +1,159 @@
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+@import "@fontsource/instrument-serif/400.css";
+@import "@fontsource/instrument-serif/400-italic.css";
+@import "tailwindcss";
+
+/* Aval — tokens semânticos. Dark-first; [data-theme="light"] redefine. */
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
+  --c-bg: #07090d;
+  --c-bg-2: #0a0e14;
+  --c-surface: rgb(255 255 255 / 0.035);
+  --c-surface-2: rgb(255 255 255 / 0.06);
+  --c-solid: #0d1219;
+  --c-line: rgb(255 255 255 / 0.08);
+  --c-line-strong: rgb(255 255 255 / 0.14);
+  --c-ink: #e9eef3;
+  --c-muted: #8d98a7;
+  --c-faint: #56616f;
+  --c-accent: #34d399;
+  --c-accent-2: #6ee7b7;
+  --c-accent-ink: #03140c;
+  --c-accent-soft: rgb(52 211 153 / 0.12);
+  --c-baixo: #4ade80;
+  --c-medio: #fbbf24;
+  --c-alto: #fb7185;
+  --c-info: #7dd3fc;
+  --c-glow: rgb(52 211 153 / 0.18);
+  --c-glow-2: rgb(56 189 248 / 0.1);
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 20px 50px -20px rgb(0 0 0 / 0.6);
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+  --c-bg: #f5f7f8;
+  --c-bg-2: #eef1f3;
+  --c-surface: rgb(255 255 255 / 0.85);
+  --c-surface-2: #f1f4f6;
+  --c-solid: #ffffff;
+  --c-line: #e2e7eb;
+  --c-line-strong: #cfd6dc;
+  --c-ink: #0b1116;
+  --c-muted: #56616e;
+  --c-faint: #8b95a1;
+  --c-accent: #059669;
+  --c-accent-2: #10b981;
+  --c-accent-ink: #ffffff;
+  --c-accent-soft: rgb(5 150 105 / 0.1);
+  --c-baixo: #16a34a;
+  --c-medio: #d97706;
+  --c-alto: #e11d48;
+  --c-info: #0284c7;
+  --c-glow: rgb(16 185 129 / 0.16);
+  --c-glow-2: rgb(14 165 233 / 0.08);
+  --shadow-card: 0 1px 2px rgb(15 23 32 / 0.05), 0 12px 32px -12px rgb(15 23 32 / 0.12);
+}
+
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-bg-2: var(--c-bg-2);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-solid: var(--c-solid);
+  --color-line: var(--c-line);
+  --color-line-strong: var(--c-line-strong);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-faint: var(--c-faint);
+  --color-accent: var(--c-accent);
+  --color-accent-2: var(--c-accent-2);
+  --color-accent-ink: var(--c-accent-ink);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-baixo: var(--c-baixo);
+  --color-medio: var(--c-medio);
+  --color-alto: var(--c-alto);
+  --color-info: var(--c-info);
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, "Cascadia Code", monospace;
+  --font-serif: "Instrument Serif", ui-serif, Georgia, serif;
+  --shadow-card: var(--shadow-card);
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scrollbar-gutter: stable;
+  }
+  body {
+    @apply bg-bg text-ink font-sans antialiased;
+    min-height: 100dvh;
+    font-feature-settings: "ss01", "cv11";
+  }
+  ::selection {
+    background: var(--c-accent-soft);
+    color: var(--c-ink);
+  }
+  :focus-visible {
+    outline: 2px solid var(--c-accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+}
+
+@layer components {
+  .glass {
+    @apply rounded-2xl border border-line bg-surface shadow-card;
+    backdrop-filter: blur(14px);
+  }
+  .grid-bg {
+    background-image:
+      linear-gradient(var(--c-line) 1px, transparent 1px),
+      linear-gradient(90deg, var(--c-line) 1px, transparent 1px);
+    background-size: 56px 56px;
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 30%, transparent 75%);
+  }
+  .text-gradient {
+    background: linear-gradient(120deg, var(--c-ink) 20%, var(--c-accent-2) 60%, var(--c-accent) 90%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+  .shine {
+    position: relative;
+    overflow: hidden;
+  }
+  .shine::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.25) 50%, transparent 70%);
+    transform: translateX(-120%);
+    transition: transform 0.7s ease;
+  }
+  .shine:hover::after {
+    transform: translateX(120%);
+  }
+}
+
+@keyframes skeleton {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--c-surface-2) 25%, var(--c-line-strong) 50%, var(--c-surface-2) 75%);
+  background-size: 200% 100%;
+  animation: skeleton 1.6s ease-in-out infinite;
+  border-radius: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

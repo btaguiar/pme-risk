@@ -31,12 +31,23 @@ Thumbs.db
 # Worktrees
 .worktrees/
 
+# Brainstorm visual (mockups temporários)
+.superpowers/
+
 # Credentials
 *.json
 !data/schemas/*.json
 !eval/*/results/*.json
+!frontend/package.json
+!frontend/package-lock.json
+!frontend/tsconfig.json
 credentials/
 service-account*.json
 
 # Padrões locais do scanner de segredos (IDs de projeto — nunca versionar)
 infra/scripts/secret_patterns.local
+
+# Frontend (Vite)
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
