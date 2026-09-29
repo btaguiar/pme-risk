@@ -30,8 +30,9 @@ URL_PADRAO = "https://brasilapi.com.br/api/cnpj/v1/{cnpj}"
 FONTE = "BrasilAPI — dados abertos do CNPJ (Receita Federal)"
 TIMEOUT_S = 5.0
 
-# Porte cadastral da Receita → porte do pedido. "DEMAIS" não é PME: fica None.
-_PORTE_RECEITA = {"MICRO EMPRESA": "ME", "EMPRESA DE PEQUENO PORTE": "EPP"}
+# Porte cadastral da Receita → porte do pedido. "DEMAIS" (não é PME) fica como
+# está: diverge de qualquer porte declarado — empresa grande não passa como ME.
+_PORTE_RECEITA = {"MICRO EMPRESA": "ME", "EMPRESA DE PEQUENO PORTE": "EPP", "DEMAIS": "DEMAIS"}
 
 
 def _buscar(cnpj: str) -> dict | None:

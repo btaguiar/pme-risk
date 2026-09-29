@@ -227,7 +227,7 @@ O Pesquisador (`agents/pesquisador/`) consulta o CNPJ na **BrasilAPI** (dados
 abertos da Receita Federal; gratuita, sem chave). Um campo só vira ✅
 **verificado** quando o dado público confere com o declarado: seção CNAE
 (`cnae_fiscal` → seção, `agents/setores.py`), porte (MEI pela opção no Simei;
-ME/EPP pelo porte cadastral), UF e anos desde a abertura (tolerância de 1 ano).
+ME/EPP pelo porte cadastral; "DEMAIS" diverge de qualquer porte PME), UF e anos desde a abertura (tolerância de 1 ano).
 Se diverge, o campo segue ⚠️ declarado e a divergência vai para
 `cnpj_dados.divergencias` — o Redator é instruído a mostrá-la com os dois valores.
 Faturamento, valor, prazo e finalidade são sempre declarados.

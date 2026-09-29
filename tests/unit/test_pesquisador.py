@@ -81,7 +81,10 @@ class TestNormalizar:
         assert dados["porte"] == "MEI"
 
     def test_porte_demais_nao_e_pme(self):
-        assert cnpj.normalizar({**_BRUTO, "porte": "DEMAIS"}, _HOJE)["porte"] is None
+        assert cnpj.normalizar({**_BRUTO, "porte": "DEMAIS"}, _HOJE)["porte"] == "DEMAIS"
+
+    def test_porte_nao_informado_fica_none(self):
+        assert cnpj.normalizar({**_BRUTO, "porte": None}, _HOJE)["porte"] is None
 
 
 class TestBuscar:
@@ -124,6 +127,14 @@ class TestEnriquecer:
         assert r.fonte_por_campo["anos_operacao"] == "declarado"
         assert r.cnpj_dados["divergencias"] == [
             {"campo": "anos_operacao", "declarado": 6.0, "publico": 2.0}
+        ]
+
+    def test_empresa_grande_declarada_me_diverge(self):
+        publico = cnpj.normalizar({**_BRUTO, "porte": "DEMAIS"}, _HOJE)
+        r = enriquecer(_pedido(porte="ME"), consultar=_consulta(publico))
+        assert r.fonte_por_campo["porte"] == "declarado"
+        assert {"campo": "porte", "declarado": "ME", "publico": "DEMAIS"} in r.cnpj_dados[
+            "divergencias"
         ]
 
     def test_anos_dentro_da_tolerancia_conferem(self):
