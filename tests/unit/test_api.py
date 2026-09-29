@@ -150,6 +150,18 @@ class TestLlmIndisponivel:
         assert r.status_code == 503
         assert r.headers["Retry-After"] == "30"
 
+    def test_resposta_fora_do_schema_vira_502(self, client):
+        from agents.gemini import RespostaInvalidaError
+
+        response, fake = client
+
+        def gerar(texto: str, prazo_meses: int | None = None):
+            raise RespostaInvalidaError("vazia")
+
+        fake.gerar = gerar
+        r = response.post("/laudos", json=PEDIDO)
+        assert r.status_code == 502
+
 
 class TestPatchDecisao:
     def test_decide_laudo_200(self, client):

@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from google.genai import errors as genai_errors
 from pydantic import BaseModel, Field
 
+from agents.gemini import RespostaInvalidaError
 from api import frontend
 from api.pipeline import LaudoCriado, Pipeline, Recusa, get_pipeline
 
@@ -56,9 +57,14 @@ def criar_laudo(pedido: PedidoTexto, pipeline: PipelineDep) -> dict[str, str]:
                 headers={"Retry-After": "30"},
             ) from e
         raise
+    except RespostaInvalidaError as e:
+        # O LLM respondeu fora do schema (vazio, truncado): falha do upstream.
+        raise HTTPException(status_code=502, detail="Resposta inválida do serviço de LLM.") from e
     if isinstance(resultado, Recusa):
         raise HTTPException(status_code=422, detail={"motivo_recusa": resultado.motivo})
-    assert isinstance(resultado, LaudoCriado)
+    if not isinstance(resultado, LaudoCriado):
+        # assert some com python -O; tipo inesperado do pipeline vira 500 explícito.
+        raise TypeError(f"Pipeline devolveu {type(resultado).__name__}")
     return {"laudo_id": resultado.laudo_id, "status": resultado.status}
 
 

@@ -15,6 +15,10 @@ venv/
 dist/
 build/
 
+# Logs do uvicorn em dev local
+uvicorn.err
+uvicorn.out
+
 # Caches
 .pytest_cache/
 .ruff_cache/

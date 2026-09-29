@@ -6,14 +6,13 @@ Usa Vertex AI via ADC (sem API key).
 
 from __future__ import annotations
 
-import json
 import os
 from pathlib import Path
 
 from google import genai
 from google.genai import types
 
-from agents.gemini import HTTP_OPTIONS
+from agents.gemini import HTTP_OPTIONS, resolver_project_id, validar_resposta
 from agents.schemas import DadosExtraidos
 
 PROMPT_PATH = Path(__file__).parent / "prompt.md"
@@ -51,7 +50,7 @@ def extrair(
     Returns:
         DadosExtraidos com pedido estruturado ou recusa
     """
-    project_id = project_id or os.environ["GCP_PROJECT_ID"]
+    project_id = resolver_project_id(project_id)
     client = genai.Client(
         vertexai=True,
         project=project_id,
@@ -70,5 +69,4 @@ def extrair(
         ),
     )
 
-    resultado = json.loads(response.text)
-    return DadosExtraidos.model_validate(resultado)
+    return validar_resposta(response, DadosExtraidos)

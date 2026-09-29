@@ -15,7 +15,7 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
-from agents.gemini import HTTP_OPTIONS
+from agents.gemini import HTTP_OPTIONS, resolver_project_id, validar_resposta
 from agents.schemas import DadosEnriquecidos, ResultadoModelo
 
 PROMPT_PATH = Path(__file__).parent / "prompt.md"
@@ -79,7 +79,7 @@ def chamar_redator(prompt: str, project_id: str | None = None) -> ResultadoRedac
     Compartilhada com o baseline de chamada única do eval
     (eval/laudo/baseline_chamada_unica.py): muda só o conteúdo do prompt.
     """
-    project_id = project_id or os.environ["GCP_PROJECT_ID"]
+    project_id = resolver_project_id(project_id)
     client = genai.Client(
         vertexai=True,
         project=project_id,
@@ -96,5 +96,4 @@ def chamar_redator(prompt: str, project_id: str | None = None) -> ResultadoRedac
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
         ),
     )
-    resultado = json.loads(response.text)
-    return ResultadoRedacao.model_validate(resultado)
+    return validar_resposta(response, ResultadoRedacao)
