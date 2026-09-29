@@ -17,7 +17,7 @@ import { Container } from "../components/Layout";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { Aviso, Button, ButtonLink, Card, Eyebrow, FaixaBadge, Skeleton, StatusBadge, cx } from "../components/ui";
 import { api, detalheErro, type Decisao, type Laudo } from "../lib/api";
-import { LIMITES_FAIXA, capitalizar, dataCurta, fmtNum, moeda } from "../lib/format";
+import { LIMITES_FAIXA, capitalizar, dataCurta, finalidade, fmtNum, moeda } from "../lib/format";
 
 type Carga = { tipo: "carregando" } | { tipo: "nao-encontrado" } | { tipo: "erro"; status: number } | { tipo: "ok"; laudo: Laudo };
 
@@ -84,7 +84,11 @@ function Detalhe({ laudo, aoDecidir }: { laudo: Laudo; aoDecidir: () => void }) 
               <Campo rotulo="Faturamento anual" valor={moeda(pedido.faturamento_anual_declarado)} mono />
               <Campo rotulo="Valor solicitado" valor={moeda(pedido.valor_solicitado)} mono />
               <Campo rotulo="Prazo" valor={pedido.prazo_meses != null ? `${pedido.prazo_meses} meses` : "—"} />
-              <Campo rotulo="Finalidade" valor={capitalizar(pedido.finalidade)} className="col-span-2" />
+              <Campo
+                rotulo="Finalidade"
+                valor={finalidade(pedido.finalidade, pedido.finalidade_detalhe)}
+                className="col-span-2"
+              />
             </dl>
           </Card>
         </aside>

@@ -139,3 +139,13 @@ def test_faixa_de_risco_entre_crases_e_valida_mas_so_a_correta():
     # caso real: o baseline escreveu `medio`; PD 0.066 → faixa "medio"
     assert _julgar("Faixa `medio`.").fatores_desconhecidos == []
     assert _julgar("Faixa `alto`.").fatores_desconhecidos == ["alto"]
+
+
+def test_numero_dos_dados_publicos_do_cnpj_tem_evidencia():
+    texto = "Segundo a Receita, a empresa opera há 7,2 anos (⚠️ declarado: 5)."
+    sem = julgar(texto, [], 0.1, [], {"anos_operacao": 5}, "5 anos")
+    com = julgar(
+        texto, [], 0.1, [], {"anos_operacao": 5}, "5 anos", cnpj_dados={"anos_operacao": 7.2}
+    )
+    assert "7,2" in sem.numeros_sem_evidencia
+    assert com.numeros_sem_evidencia == []

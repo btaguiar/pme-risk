@@ -117,15 +117,16 @@ Pydantic em `agents/schemas.py`, usado tanto pelo Extrator quanto pela API:
   "faturamento_anual_declarado": "number (BRL) — sempre ⚠️ declarado",
   "valor_solicitado": "number (BRL)",
   "prazo_meses": "integer | null — opcional, nem sempre mencionado",
-  "finalidade": "string livre",
-  "cnpj": "string | null — se presente, habilita enriquecimento via quimera-core"
+  "finalidade": "enum — agents/finalidades.py (9 códigos, giro × investimento)",
+  "finalidade_detalhe": "string | null — texto livre, usado no laudo, não avaliado",
+  "cnpj": "string | null — se presente, habilita consulta pública (BrasilAPI)"
 }
 ```
 
 **Decisões de implementação (2026-09-27):**
 - `prazo_meses` é opcional (`int | None`) — nem sempre mencionado no pedido
 - `valor_solicitado` e `faturamento_anual_declarado` são obrigatórios
-- `finalidade` é normalizada para `snake_case` pelo Extrator
+- `finalidade` é vocabulário fechado (`agents/finalidades.py`), imposto via `response_schema` (2026-09-29)
 - **(2026-09-28)** `setor` virou seção CNAE 2.0 (vocabulário fechado, imposto via
   `response_schema`); o detalhe vai em `atividade`. Rótulo livre fazia o F1 do
   campo medir sinônimos (0.60 no eval v5)
@@ -222,7 +223,7 @@ class DadosExtraidos(BaseModel):
 
 class DadosEnriquecidos(BaseModel):
     extraidos: DadosExtraidos
-    cnpj_dados: dict | None       # do quimera-core: idade, CNAE, situação cadastral
+    cnpj_dados: dict | None       # BrasilAPI: seção CNAE, anos, porte, UF, situação + divergencias
     fonte_por_campo: dict[str, Literal["verificado", "declarado"]]
 
 class ResultadoModelo(BaseModel):
@@ -337,7 +338,7 @@ de log-based alert do Cloud Monitoring free tier cobre isso.
 | Mapeamento Home Credit → PME (§3.2) ficar arbitrário demais e comprometer a credibilidade do "PD" | Documentar a hipótese explicitamente no README como limite, não escondê-la; considerar reportar métricas também segmentadas por porte simulado |
 | `ML.EXPLAIN_PREDICT` não cobrir `LOGISTIC_REG` do jeito esperado | Testar cedo (semana 2, não semana 3); fallback é coeficiente × feature padronizada, que já cobre o caso linear |
 | Custo de treino repetido do BQML consumir a cota de 1 TB de query grátis | Materializar a tabela de features uma vez (§3.3.4) em vez de recomputar a cada `CREATE MODEL` |
-| quimera-core não estar publicável a tempo da Fase 2 | O plano já isola essa dependência (§3, "Pré-requisito"); manter um stub local de enriquecimento de CNPJ para não bloquear o resto da Fase 2 |
+| quimera-core não estar publicável a tempo da Fase 2 | Materializou-se: o stub serviu até 2026-09-29, quando a consulta passou a usar a BrasilAPI (`agents/pesquisador/cnpj.py`) atrás de uma função injetável — o quimera-core pode substituí-la |
 
 ## 9. Pendências que exigem decisão do desenvolvedor
 
@@ -362,9 +363,9 @@ de log-based alert do Cloud Monitoring free tier cobre isso.
 | LLM auth | Vertex AI via ADC | Sem API key, integração GCP nativa |
 | LLM do Extrator | `gemini-2.5-flash` mantido (2026-09-28) | Comparado a qwen3.8-flash/max e deepseek-v4-pro: F1 empatado (≤ 1 ponto), Gemini mais rápido e sem transferência de dados para fora do GCP |
 | Extração `setor` | Seção CNAE 2.0 (enum) | Padrão externo; rótulo livre gerava sinônimos |
-| Extração `finalidade` | `snake_case` normalizado | Consistência para avaliação |
+| Extração `finalidade` | Vocabulário fechado (enum, 2026-09-29) | Rótulo livre gerava sinônimos (`modernizacao` × `equipamentos`); detalhe em `finalidade_detalhe` |
 | `valor_solicitado` obrigatório | Sim | Essencial para análise de crédito |
-| `verificado` no Pesquisador | Só se `cnpj_dados` existe | Stub retorna None → tudo declarado |
+| `verificado` no Pesquisador | Só se o dado público **confere** com o declarado (setor, porte, UF; anos com tolerância de 1) | Divergência fica declarada e vai para `cnpj_dados.divergencias`; consulta falhou → tudo declarado |
 | Boosted tree | `candidate_rejected` | Erro BQML 80038528, baseline promovido |
 | Check de credenciais | `infra/scripts/check_secrets.sh` | Previne vazamento de IDs (3ª reincidência) |
 | Eval harness | Conta recusa mesmo em erro | Item que falha validação não pode pular contagem |

@@ -66,6 +66,26 @@ export function idCurto(id: string) {
   return id.slice(0, 8);
 }
 
+/** Rótulos das finalidades de agents/finalidades.py (vocabulário fechado). */
+const FINALIDADES: Record<string, string> = {
+  capital_de_giro: "Capital de giro",
+  estoque: "Estoque",
+  refinanciamento: "Refinanciamento",
+  maquinas_equipamentos: "Máquinas e equipamentos",
+  veiculos: "Veículos",
+  obras_reforma: "Obras e reforma",
+  tecnologia: "Tecnologia",
+  expansao: "Expansão",
+  abertura_de_empresa: "Abertura de empresa",
+};
+
+/** "Máquinas e equipamentos — forno industrial"; laudos antigos (texto livre) caem no slug. */
+export function finalidade(codigo?: string | null, detalhe?: string | null) {
+  if (!codigo) return "—";
+  const rotulo = FINALIDADES[codigo] ?? capitalizar(codigo);
+  return detalhe ? `${rotulo} — ${detalhe}` : rotulo;
+}
+
 export function capitalizar(s?: string | null) {
   if (!s) return "—";
   const t = s.replaceAll("_", " "); // setores vêm como slug (saude_servicos_sociais)

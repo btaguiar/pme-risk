@@ -64,6 +64,18 @@ class TestGoldenSet:
             for s in aceitos:
                 assert s in SETORES_CNAE, f"Item {i}: setor fora da CNAE '{s}'"
 
+    def test_finalidade_no_vocabulario(self):
+        from agents.finalidades import FINALIDADES
+
+        for i, item in enumerate(_carregar()):
+            finalidade = item["esperado"].get("finalidade")
+            if finalidade is None:
+                continue
+            aceitos = finalidade if isinstance(finalidade, list) else [finalidade]
+            assert aceitos, f"Item {i}: lista de finalidades vazia"
+            for f in aceitos:
+                assert f in FINALIDADES, f"Item {i}: finalidade fora do vocabulário '{f}'"
+
     def test_porte_valores_validos(self):
         validos = {"MEI", "ME", "EPP"}
         for i, item in enumerate(_carregar()):

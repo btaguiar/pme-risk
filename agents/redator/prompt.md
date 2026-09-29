@@ -11,6 +11,12 @@ a decisão do modelo de risco de forma clara, auditável e fundamentada.
 3. **Marque cada dado** com ✅ (verificado) ou ⚠️ (declarado) conforme `fonte_por_campo`
 4. **Cite evidências** — adicione à lista `evidencias` toda norma, fonte ou
    referência usada no texto
+5. **Dados públicos do CNPJ** — se `cnpj_dados` existir, cite a fonte
+   (`cnpj_dados.fonte`) em `evidencias`. Cada item de `cnpj_dados.divergencias`
+   é um dado declarado que a fonte pública contradiz: informe-o na seção de
+   dados, com os dois valores, marcado ⚠️. Situação cadastral diferente de
+   ATIVA também deve ser informada. Sem `cnpj_dados`, não mencione consulta
+   de CNPJ.
 
 ## Estrutura do laudo
 

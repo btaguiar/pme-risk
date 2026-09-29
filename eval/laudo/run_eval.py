@@ -13,6 +13,11 @@ Método v5 (substitui v1–v4, ver `f1_metodo_v4` no JSON para a ponte):
 v6: `setor` é seção CNAE 2.0 (vocabulário fechado, agents/setores.py);
 `atividade` (texto livre) não é avaliada.
 
+v7: `finalidade` é vocabulário fechado (agents/finalidades.py);
+`finalidade_detalhe` (texto livre) não é avaliada. Golden set reanotado e
+ampliado: itens com `"lote": "v7_novos"` foram escritos depois do prompt, com
+casos fora das notas dele — o JSON traz F1 e recusas também por lote.
+
 Run: GCP_PROJECT_ID=<projeto> uv run python -m eval.laudo.run_eval
 """
 
@@ -50,6 +55,8 @@ OMISSAO = "omissao"
 ERRO_VALOR = "erro_valor"
 ALUCINACAO = "alucinacao"
 NEGATIVO = "negativo"  # não mencionado e não extraído — não conta
+
+LOTE_ORIGINAL = "original"  # itens sem campo "lote" — anteriores ao v7
 
 
 def classificar_campo(esperado: object, obtido: object) -> str:
@@ -143,6 +150,8 @@ class RelatorioEval:
     n_recusas_esperadas: int = 0
     n_recusas_corretas: int = 0
     latencias: list[float] = field(default_factory=list)
+    por_lote: dict[str, Contagem] = field(default_factory=dict)
+    recusas_por_lote: dict[str, list[int]] = field(default_factory=dict)  # [esperadas, corretas]
     divergencias: list[dict] = field(default_factory=list)
     falhas: list[dict] = field(default_factory=list)
 
@@ -171,15 +180,21 @@ def carregar_golden_set() -> list[dict]:
 
 
 def _registrar_item(
-    relatorio: RelatorioEval, indice: int, esperado: dict, obtido: dict | None
+    relatorio: RelatorioEval,
+    indice: int,
+    esperado: dict,
+    obtido: dict | None,
+    lote: str = LOTE_ORIGINAL,
 ) -> None:
     """Contabiliza um item em escopo (obtido=None → falha ou recusa indevida)."""
     relatorio.n_em_escopo += 1
     contagem_item = Contagem()
+    contagem_lote = relatorio.por_lote.setdefault(lote, Contagem())
     for campo, classe in classificar_item(esperado, obtido).items():
         relatorio.classes[classe] = relatorio.classes.get(classe, 0) + 1
         relatorio.contagem.somar(classe)
         relatorio.por_campo[campo].somar(classe)
+        contagem_lote.somar(classe)
         contagem_item.somar(classe)
         if classe not in (ACERTO, NEGATIVO):
             relatorio.divergencias.append(
@@ -222,6 +237,8 @@ def executar_golden_set(
         texto = item["texto_pt_br"]
         esperado = item["esperado"]
         esperado_fora = bool(esperado.get("fora_de_escopo", False))
+        lote = item.get("lote", LOTE_ORIGINAL)
+        recusas_lote = relatorio.recusas_por_lote.setdefault(lote, [0, 0])
 
         inicio = time.monotonic()
         try:
@@ -234,21 +251,24 @@ def executar_golden_set(
             relatorio.falhas.append({"indice": i, "erro": f"{type(e).__name__}: {e}"[:300]})
             if esperado_fora:
                 relatorio.n_recusas_esperadas += 1  # falha não é recusa correta
+                recusas_lote[0] += 1
             else:
-                _registrar_item(relatorio, i, esperado, None)
+                _registrar_item(relatorio, i, esperado, None, lote)
             continue
         relatorio.latencias.append(time.monotonic() - inicio)
 
         if esperado_fora:
             relatorio.n_recusas_esperadas += 1
+            recusas_lote[0] += 1
             if fora_escopo:
                 relatorio.n_recusas_corretas += 1
+                recusas_lote[1] += 1
             continue
 
         if fora_escopo:
             relatorio.n_recusas_indevidas += 1
             obtido_dict = None
-        _registrar_item(relatorio, i, esperado, obtido_dict)
+        _registrar_item(relatorio, i, esperado, obtido_dict, lote)
 
     return relatorio
 
@@ -283,6 +303,17 @@ def montar_resultado(
         "f1_por_campo": {
             campo: round(ct.f1, 4) if ct.tp + ct.fp + ct.fn else None
             for campo, ct in relatorio.por_campo.items()
+        },
+        # Generalização: "v7_novos" foi escrito depois do prompt, fora das notas dele
+        "por_lote": {
+            lote: {
+                "f1_extracao": round(relatorio.por_lote[lote].f1, 4)
+                if lote in relatorio.por_lote
+                else None,
+                "n_recusas_esperadas": esperadas,
+                "n_recusas_corretas": corretas,
+            }
+            for lote, (esperadas, corretas) in sorted(relatorio.recusas_por_lote.items())
         },
         "taxa_recusa_correta": round(relatorio.taxa_recusa_correta, 4),
         "n_recusas_esperadas": relatorio.n_recusas_esperadas,
@@ -346,7 +377,7 @@ def main() -> None:
     )
     parcial = args.max_itens is not None
     nome = args.nome or (
-        "laudo_eval_v6" if args.modelo == EXTRACT_MODEL else f"laudo_eval_v6_{args.modelo}"
+        "laudo_eval_v7" if args.modelo == EXTRACT_MODEL else f"laudo_eval_v7_{args.modelo}"
     )
     # Rodada parcial nunca sobrescreve o resultado citável
     if parcial:

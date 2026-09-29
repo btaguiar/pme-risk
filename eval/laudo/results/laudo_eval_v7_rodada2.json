@@ -1,0 +1,120 @@
+{
+  "metodo": "v5",
+  "modelo": "gemini-2.5-flash",
+  "parcial": false,
+  "f1_extracao": 0.9868,
+  "precisao": 0.9933,
+  "recall": 0.9803,
+  "f1_macro_por_item": 0.9776,
+  "f1_metodo_v4": 0.9793,
+  "tp": 448,
+  "fp": 3,
+  "fn": 9,
+  "classes": {
+    "acerto": 448,
+    "erro_valor": 3,
+    "negativo": 110,
+    "omissao": 6
+  },
+  "f1_por_campo": {
+    "setor": 0.944,
+    "porte": 0.992,
+    "uf": 1.0,
+    "anos_operacao": 0.992,
+    "faturamento_anual_declarado": 0.992,
+    "valor_solicitado": 0.992,
+    "prazo_meses": 1.0,
+    "finalidade": 0.992,
+    "cnpj": 1.0
+  },
+  "por_lote": {
+    "original": {
+      "f1_extracao": 0.9819,
+      "n_recusas_esperadas": 11,
+      "n_recusas_corretas": 11
+    },
+    "v7_novos": {
+      "f1_extracao": 0.9944,
+      "n_recusas_esperadas": 6,
+      "n_recusas_corretas": 6
+    }
+  },
+  "taxa_recusa_correta": 1.0,
+  "n_recusas_esperadas": 17,
+  "n_recusas_corretas": 17,
+  "taxa_recusa_indevida": 0.0159,
+  "n_recusas_indevidas": 1,
+  "n_itens": 80,
+  "n_em_escopo": 63,
+  "n_falhas_execucao": 0,
+  "latencia_media_s": 5.79,
+  "custo_estimado_usd": 0.008,
+  "tokens_entrada_medio": null,
+  "tokens_saida_medio": null,
+  "divergencias": [
+    {
+      "indice": 9,
+      "campo": "setor",
+      "tipo": "omissao",
+      "esperado": "informacao_comunicacao",
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "porte",
+      "tipo": "omissao",
+      "esperado": "ME",
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "anos_operacao",
+      "tipo": "omissao",
+      "esperado": 0,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "faturamento_anual_declarado",
+      "tipo": "omissao",
+      "esperado": 0,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "valor_solicitado",
+      "tipo": "omissao",
+      "esperado": 100000,
+      "obtido": null
+    },
+    {
+      "indice": 9,
+      "campo": "finalidade",
+      "tipo": "omissao",
+      "esperado": "abertura_de_empresa",
+      "obtido": null
+    },
+    {
+      "indice": 11,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "industria_transformacao",
+      "obtido": "alojamento_alimentacao"
+    },
+    {
+      "indice": 24,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "profissionais_cientificas_tecnicas",
+      "obtido": "artes_cultura_esporte"
+    },
+    {
+      "indice": 73,
+      "campo": "setor",
+      "tipo": "erro_valor",
+      "esperado": "comercio",
+      "obtido": "saude_servicos_sociais"
+    }
+  ],
+  "falhas": []
+}

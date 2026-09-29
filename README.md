@@ -10,7 +10,7 @@ aprova ou rejeita antes do laudo final.
 | Fase | Status | Entrega |
 |---|---|---|
 | 1 — Modelo | ✅ Completa | LOGISTIC_REG `logreg_v2` em produção, métricas em `eval/model/results/` |
-| 2 — Laudo | ✅ Completa | Agentes, portão humano, auditoria; extração F1 0.96, fidedignidade do laudo 100%, baseline de chamada única medido |
+| 2 — Laudo | ✅ Completa | Agentes, portão humano, auditoria; extração F1 0.99, fidedignidade do laudo 100%, baseline de chamada única medido |
 | 3 — Produto | ✅ Em produção (privado) | API no Cloud Run (IAM + X-API-Key no Secret Manager), job de drift semanal; smoke pós-deploy executado |
 
 ## Arquitetura
@@ -62,25 +62,31 @@ Regra: só números reproduzíveis a partir de `eval/*/results/` (BRIEF.md).
 > **Ressalva:** o Brier mal supera o preditor constante (0.0735 vs 0.0744) — o
 > modelo ordena risco (KS/AUC) melhor do que estima probabilidade absoluta.
 
-### Extração — `eval/laudo/results/laudo_eval_v6.json`
+### Extração — `eval/laudo/results/laudo_eval_v7.json`
 
 | Métrica | Valor | Meta | Status |
 |---|---|---|---|
-| F1 extração (micro, por campo) | 0.9601 (P 0.9707 / R 0.9498) | ≥ 0.90 | ✅ |
+| F1 extração (micro, por campo) | 0.9868 (P 0.9933 / R 0.9803) | ≥ 0.90 | ✅ |
 | Alucinação (valor em campo não mencionado) | 0 | — | ✅ |
-| Recusa correta | 100% (11/11) | ≥ 95% | ✅ |
-| Recusa indevida | 2.56% (1/39) | — | ⚠️ |
-| Latência média | 7.23s | — | — |
+| Recusa correta | 100% (17/17) | ≥ 95% | ✅ |
+| Recusa indevida | 1.59% (1/63) | — | ⚠️ |
+| Latência média | 5.78s | — | — |
 
-Duas rodadas completas deram o mesmo agregado
-(`laudo_eval_v6.json`, `laudo_eval_v6_rodada2.json`).
+Golden set: 80 itens (63 em escopo, 17 fora). Duas rodadas completas deram o
+mesmo agregado (`laudo_eval_v7.json`, `laudo_eval_v7_rodada2.json`); por lote
+variam — o Gemini deixou de ser determinístico em 2 itens de `setor`:
 
-| F1 por campo | v5 (setor livre) | v6 (setor CNAE) |
-|---|---|---|
-| porte, UF, anos, faturamento, valor, prazo | 0.987 – 1.0 | 0.987 – 1.0 |
-| `setor` | 0.5974 | **0.9091** |
-| `finalidade` | 0.8571 | 0.8571 |
-| `cnpj` | — | — (nenhum texto tem CNPJ; nenhum inventado) |
+| Lote | Itens | F1 r1 / r2 | Recusa correta |
+|---|---|---|---|
+| original (v1–v6) | 50 (39 em escopo) | 0.9783 / 0.9819 | 11/11 |
+| `v7_novos` | 30 (24 em escopo) | 1.0 / 0.9944 | 6/6 |
+
+| F1 por campo | v5 (setor livre) | v6 (setor CNAE) | v7 (finalidade fechada, 80 itens) |
+|---|---|---|---|
+| porte, UF, anos, faturamento, valor, prazo | 0.987 – 1.0 | 0.987 – 1.0 | 0.992 – 1.0 |
+| `setor` | 0.5974 | 0.9091 | **0.944** |
+| `finalidade` | 0.8571 | 0.8571 | **0.992** |
+| `cnpj` | — | — | 1.0 (1 item) |
 
 **Método** (`eval/laudo/run_eval.py`, testado em `tests/unit/test_eval_laudo.py`):
 os 39 itens em escopo anotam os 9 campos, com `null` = "não mencionado"; valor
@@ -106,9 +112,35 @@ fotografia → R em vez de M; vigilância → S em vez de N).
 > set; o F1 de `setor` pode não generalizar igual.
 > (3) Em 5 itens a própria CNAE admite duas seções (ex.: engenharia civil F/M);
 > o golden aceita qualquer uma, decidido pelo texto antes de rodar o eval.
-> (4) `finalidade` segue texto livre e é agora o campo mais fraco.
+> (4) (v6) `finalidade` era texto livre e o campo mais fraco — resolvido no v7.
 > (5) A recusa indevida é o item 9 ("quero abrir uma empresa", sem UF nem
 > porte) — anotação discutível, mantida para não ajustar o rótulo ao resultado.
+
+**v7 — `finalidade` com vocabulário fechado e golden set ampliado:**
+`finalidade` passou a ser um de 9 códigos (`agents/finalidades.py`: capital de
+giro, estoque, refinanciamento, máquinas e equipamentos, veículos, obras e
+reforma, tecnologia, expansão, abertura de empresa), imposto via
+`response_schema`; o detalhe vai em `finalidade_detalhe` (livre, não avaliado).
+Os 39 itens originais foram reanotados pela regra de desempate do prompt
+("item comprado nomeado → categoria do item"), e 30 itens novos
+(`"lote": "v7_novos"`) entraram com setores, finalidades e formas de escrever
+fora dos exemplos do prompt (faturamento mensal, prazo em anos ou parcelas,
+porte ausente, CNPJ no texto, recusa em inglês e por ilicitude).
+
+> **Ressalvas (v7):**
+> (1) O salto de `finalidade` (0.86 → 0.99) é quase todo **de método**, como o
+> de `setor` no v6: sinônimos (`modernizacao`, `automacao`, `equipamentos`)
+> viraram um código. O único erro restante é o item 9, recusado inteiro.
+> (2) **O lote novo não é um holdout independente.** Os itens e as regras de
+> desempate do prompt foram escritos pela mesma pessoa, no mesmo dia; F1 de
+> 0.99–1.0 ali mede consistência com o vocabulário, não generalização a textos
+> de terceiros. Em 6 dos 24 itens novos em escopo o golden aceita duas
+> categorias (ex.: trator = máquina ou veículo; "construir chalés" = obra ou
+> expansão), decididas pelo texto antes de rodar.
+> (3) Os erros de `setor` restantes são CNAE de fato e variam entre rodadas:
+> padaria → I, fotografia → R, joalheria → C (r1), farmácia → Q (r2).
+> (4) O v7 não é comparável ao v6 no agregado: mudaram rótulos e itens. A
+> comparação de modelos abaixo é do v6 e não foi refeita.
 
 ### Comparação de modelos no Extrator — `eval/laudo/results/laudo_eval_v6_*.json`
 
@@ -179,7 +211,8 @@ arquitetura, então os dois fazem 2 chamadas ao LLM por laudo.
 > ⚠️ declarados") e não campo a campo, o que conta como erro pela regra do prompt.
 > (2) O juiz só checa afirmações verificáveis mecanicamente; frases
 > qualitativas ("setor resiliente") não são avaliadas.
-> (3) Nenhum campo é verificado hoje (stub de CNPJ), então ✅ nunca é esperado.
+> (3) A rodada foi feita com o stub de CNPJ: nenhum campo era verificado, então
+> ✅ nunca era esperado. A consulta real (abaixo) ainda não passou por este eval.
 > (4) O item 9 do golden set é recusado pelo Extrator e não chega ao Redator
 > (38 de 39); o baseline não tem caminho de recusa e não foi testado fora de escopo.
 
@@ -187,6 +220,31 @@ arquitetura, então os dois fazem 2 chamadas ao LLM por laudo.
 > mapeamento `setor→snake_case` no prompt do Extrator. Alguns exemplos são
 > literalmente itens do golden set — há vazamento teste↔ajuste. O F1 medido
 > provavelmente não generaliza tão bem para setores fora da lista de exemplos.
+
+### Consulta de CNPJ — verificado × declarado
+
+O Pesquisador (`agents/pesquisador/`) consulta o CNPJ na **BrasilAPI** (dados
+abertos da Receita Federal; gratuita, sem chave). Um campo só vira ✅
+**verificado** quando o dado público confere com o declarado: seção CNAE
+(`cnae_fiscal` → seção, `agents/setores.py`), porte (MEI pela opção no Simei;
+ME/EPP pelo porte cadastral), UF e anos desde a abertura (tolerância de 1 ano).
+Se diverge, o campo segue ⚠️ declarado e a divergência vai para
+`cnpj_dados.divergencias` — o Redator é instruído a mostrá-la com os dois valores.
+Faturamento, valor, prazo e finalidade são sempre declarados.
+
+- **Só o CNPJ sai do GCP**; a resposta é reduzida aos campos de verificação —
+  razão social (no MEI, costuma ser o nome da pessoa), sócios e contatos são
+  descartados (LGPD art. 6º, III).
+- Falha de rede, timeout (5s) ou CNPJ inexistente → tudo declarado; a consulta
+  nunca derruba o laudo. `CNPJ_API_URL=""` desliga a consulta.
+- Desvio do PLANO §3 (previa o `quimera-core`), registrado lá; a função é
+  injetável e pode ser trocada.
+
+> **Ressalva:** a consulta tem testes unitários com a forma real da resposta e
+> smoke contra a API, mas **não tem eval**: o golden set é sintético e o único
+> CNPJ dele é fictício (dígito verificador inválido — a API responde 400), então
+> nenhum item exercita o caminho ✅. Medir isso exige pedidos com CNPJs reais de
+> empresas públicas.
 
 ## Limites honestos
 

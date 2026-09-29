@@ -200,6 +200,7 @@ def julgar(
     campos: dict[str, object],
     texto_pedido: str,
     fonte_por_campo: dict[str, str] | None = None,
+    cnpj_dados: dict | None = None,
 ) -> Julgamento:
     """Julga um laudo contra suas fontes.
 
@@ -211,6 +212,7 @@ def julgar(
         campos: valores de referência do pedido (golden set)
         texto_pedido: texto original do pedido — números dele têm evidência
         fonte_por_campo: classificação por campo; None = todos declarados
+        cnpj_dados: dados públicos do CNPJ — números deles têm evidência
     """
     j = Julgamento()
 
@@ -228,6 +230,12 @@ def julgar(
         evid.add(valor / prazo)
     for n in extrair_numeros(texto_pedido):
         evid |= set(n.valores)
+    # Dados públicos (anos desde a abertura, CNAE) — só os numéricos de topo
+    evid |= {
+        float(v)
+        for v in (cnpj_dados or {}).values()
+        if isinstance(v, int | float) and not isinstance(v, bool)
+    }
     for n in extrair_numeros(texto):
         j.afirmacoes += 1
         if tem_evidencia(n, evid):
@@ -271,7 +279,13 @@ def julgar(
     linhas = texto.splitlines()
     j.marcas_verificado = texto.count("✅")
     for campo, valor in campos.items():
-        if valor is None or campo in ("setor", "finalidade", "cnpj", "atividade"):
+        if valor is None or campo in (
+            "setor",
+            "finalidade",
+            "cnpj",
+            "atividade",
+            "finalidade_detalhe",
+        ):
             continue  # rótulos normalizados não aparecem literalmente no texto
         linhas_campo = [ln for ln in linhas if _linha_menciona(ln, valor)]
         if not linhas_campo:

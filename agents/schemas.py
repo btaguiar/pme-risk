@@ -11,6 +11,7 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from agents.finalidades import Finalidade
 from agents.setores import SetorCNAE
 
 
@@ -27,7 +28,10 @@ class PedidoCredito(BaseModel):
     faturamento_anual_declarado: float = Field(ge=0, description="BRL — sempre declarado")
     valor_solicitado: float = Field(ge=0, description="Valor do crédito em BRL")
     prazo_meses: int | None = Field(default=None, ge=1, description="Prazo em meses (opcional)")
-    finalidade: str = Field(description="Finalidade do crédito (texto livre)")
+    finalidade: Finalidade = Field(description="Categoria da finalidade (agents/finalidades.py)")
+    finalidade_detalhe: str | None = Field(
+        default=None, description="Para que é o crédito, como descrito (ex: forno industrial)"
+    )
     cnpj: str | None = Field(default=None, pattern=r"^\d{14}$", description="CNPJ")
 
 

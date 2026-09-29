@@ -26,6 +26,7 @@ export interface Pedido extends PedidoResumo {
   faturamento_anual_declarado?: number | null;
   prazo_meses?: number | null;
   finalidade?: string | null;
+  finalidade_detalhe?: string | null;
 }
 
 export interface Laudo {

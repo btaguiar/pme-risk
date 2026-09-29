@@ -42,3 +42,44 @@ SETORES_CNAE: dict[str, tuple[str, str]] = {
 }
 
 SetorCNAE = Literal[tuple(SETORES_CNAE)]  # type: ignore[valid-type]
+
+# Divisões CNAE 2.0 (2 primeiros dígitos da subclasse) → seção. Faixas oficiais
+# do IBGE/CONCLA; é o que liga o `cnae_fiscal` de uma consulta de CNPJ ao setor.
+_DIVISOES_POR_SECAO: dict[str, tuple[range, ...]] = {
+    "agropecuaria": (range(1, 4),),
+    "industria_extrativa": (range(5, 10),),
+    "industria_transformacao": (range(10, 34),),
+    "eletricidade_gas": (range(35, 36),),
+    "agua_esgoto_residuos": (range(36, 40),),
+    "construcao": (range(41, 44),),
+    "comercio": (range(45, 48),),
+    "transporte_armazenagem": (range(49, 54),),
+    "alojamento_alimentacao": (range(55, 57),),
+    "informacao_comunicacao": (range(58, 64),),
+    "financeiro_seguros": (range(64, 67),),
+    "atividades_imobiliarias": (range(68, 69),),
+    "profissionais_cientificas_tecnicas": (range(69, 76),),
+    "administrativas_servicos_complementares": (range(77, 83),),
+    "administracao_publica": (range(84, 85),),
+    "educacao": (range(85, 86),),
+    "saude_servicos_sociais": (range(86, 89),),
+    "artes_cultura_esporte": (range(90, 94),),
+    "outros_servicos": (range(94, 97),),
+    "servicos_domesticos": (range(97, 98),),
+    "organismos_internacionais": (range(99, 100),),
+}
+
+
+def secao_da_cnae(cnae: int | str) -> str | None:
+    """Código de setor da subclasse CNAE (ex: 4711302 → "comercio").
+
+    Aceita o inteiro da Receita, que perde o zero à esquerda (0600001 → 600001).
+    """
+    digitos = "".join(c for c in str(cnae) if c.isdigit()).zfill(7)
+    if len(digitos) != 7:
+        return None
+    divisao = int(digitos[:2])
+    for secao, faixas in _DIVISOES_POR_SECAO.items():
+        if any(divisao in faixa for faixa in faixas):
+            return secao
+    return None

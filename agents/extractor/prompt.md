@@ -18,7 +18,8 @@ Receber um texto livre descrevendo um pedido de crédito e extrair os campos est
 | `faturamento_anual_declarado` | number | BRL — sempre declarado pelo solicitante |
 | `valor_solicitado` | number | BRL |
 | `prazo_meses` | integer ou null | Prazo em meses — **opcional**, use null se não mencionado |
-| `finalidade` | string | Para que é o crédito |
+| `finalidade` | enum | Categoria da finalidade — um dos códigos da tabela abaixo |
+| `finalidade_detalhe` | string | Para que é o crédito, como descrito (ex: "forno industrial") |
 | `cnpj` | string ou null | 14 dígitos se presente |
 
 ## Regras de recusa
@@ -69,18 +70,28 @@ Pontos da CNAE que costumam confundir:
 
 Use `atividade` para o detalhe que a seção não carrega.
 
+## Finalidade
+
+`finalidade` é SEMPRE um destes códigos:
+
+| Código | Grupo | Quando usar |
+|---|---|---|
+| `capital_de_giro` | giro | Despesas correntes da operação: caixa, folha, contratação de equipe, marketing |
+| `estoque` | giro | Mercadorias ou insumos para revenda ou produção (inclui coleção) |
+| `refinanciamento` | giro | Quitar ou renegociar dívidas existentes |
+| `maquinas_equipamentos` | investimento | Máquinas, equipamentos e ferramentas — inclui modernizar ou automatizar maquinário |
+| `veiculos` | investimento | Veículos e frota (carro, moto, caminhão) |
+| `obras_reforma` | investimento | Reforma, construção ou instalações físicas (galpão, centro de distribuição) |
+| `tecnologia` | investimento | Software, sistemas e infraestrutura de TI |
+| `expansao` | investimento | Nova unidade, filial, loja ou linha de produção; ampliar a operação sem item dominante |
+| `abertura_de_empresa` | investimento | Investimento inicial de empresa ainda sem operação |
+
+Desempate: se o pedido nomeia o **item** comprado (máquina, veículo, obra),
+use a categoria do item; `expansao` é para crescer a operação sem item dominante.
+Use `finalidade_detalhe` para o que o pedido diz ("abrir filial", "forno industrial").
+
 ## Normalização OBRIGATÓRIA
 
-- **finalidade**: SEMPRE em snake_case minúsculo, sem acentos
-  - "expansão" → `expansao`
-  - "capital de giro" → `capital_de_giro`
-  - "compra de equipamentos" → `equipamentos`
-  - "compra de estoque" → `estoque`
-  - "abrir filial" → `expansao`
-  - "modernizar maquinário" → `modernizacao`
-  - "contratar equipe" → `contratacao_de_equipe`
-  - "frota de veículos" → `frota`
-  - "reforma" → `reforma`
 - **porte**: "pequena empresa" → EPP, "microempresa" → ME, "MEI" → MEI
   - Se o porte **não for mencionado**, deduza pela receita bruta anual declarada
     (LC 123/2006): até R$ 81 mil → MEI; até R$ 360 mil → ME; até R$ 4,8 milhões → EPP.
@@ -107,6 +118,7 @@ Saída:
     "valor_solicitado": 40000.0,
     "prazo_meses": 12,
     "finalidade": "estoque",
+    "finalidade_detalhe": "estoque",
     "cnpj": null
   },
   "fora_de_escopo": false,
@@ -114,8 +126,8 @@ Saída:
 }
 ```
 
-**ATENÇÃO**: `setor` é sempre um código da tabela CNAE acima; `finalidade` sempre
-em `snake_case` sem acentos.
+**ATENÇÃO**: `setor` é sempre um código da tabela CNAE acima; `finalidade` é
+sempre um código da tabela de finalidade acima.
 
 Notas:
 - Se o pedido for recusado (`fora_de_escopo: true`), retorne `pedido: null`

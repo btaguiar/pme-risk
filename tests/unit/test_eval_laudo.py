@@ -125,3 +125,16 @@ class TestExecutarGoldenSet:
         fora = {"fora_de_escopo": True, "motivo_recusa": "pessoa física"}
         r = _rodar(monkeypatch, [_item(fora)], [RuntimeError("timeout")])
         assert r["n_recusas_esperadas"] == 1 and r["n_recusas_corretas"] == 0
+
+    def test_f1_e_recusas_separados_por_lote(self, monkeypatch):
+        fora = {"fora_de_escopo": True, "motivo_recusa": "pessoa física"}
+        golden = [
+            _item(_ESPERADO),
+            {**_item(_ESPERADO), "lote": "v7_novos"},
+            {**_item(fora), "lote": "v7_novos"},
+        ]
+        r = _rodar(monkeypatch, golden, [_pedido(), _pedido(uf="RJ"), _recusa()])
+        assert r["por_lote"]["original"]["f1_extracao"] == 1.0
+        assert r["por_lote"]["v7_novos"]["f1_extracao"] < 1.0
+        assert r["por_lote"]["v7_novos"]["n_recusas_corretas"] == 1
+        assert r["por_lote"]["original"]["n_recusas_esperadas"] == 0

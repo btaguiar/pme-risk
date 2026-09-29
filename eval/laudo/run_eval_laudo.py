@@ -66,6 +66,7 @@ class Preparado:
             "pd": self.resultado.pd,
             "fatores": [list(f) for f in self.resultado.fatores],
             "fonte_por_campo": self.enriquecidos.fonte_por_campo,
+            "cnpj_dados": self.enriquecidos.cnpj_dados,
             "n_campos_pedido": len([c for c in pedido.model_dump() if c != "cnpj"])
             if pedido
             else 0,
@@ -137,6 +138,8 @@ def julgar_laudo(braco: str, laudo: dict, insumos: dict) -> Julgamento:
         insumos["campos"],
         insumos["texto_pedido"],
         insumos["fonte_por_campo"] if braco == MULTI else None,
+        # .get: JSONs de rodadas anteriores à consulta de CNPJ não têm a chave
+        insumos.get("cnpj_dados") if braco == MULTI else None,
     )
 
 

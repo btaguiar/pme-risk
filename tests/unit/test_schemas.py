@@ -135,3 +135,27 @@ class TestSetorCNAE:
         prompt = PROMPT_PATH.read_text(encoding="utf-8")
         faltando = [cod for cod in SETORES_CNAE if f"`{cod}`" not in prompt]
         assert not faltando, f"Seções CNAE ausentes do prompt: {faltando}"
+
+    def test_prompt_do_extrator_lista_todas_as_finalidades(self):
+        from agents.extractor.extractor import PROMPT_PATH
+        from agents.finalidades import FINALIDADES
+
+        prompt = PROMPT_PATH.read_text(encoding="utf-8")
+        faltando = [cod for cod in FINALIDADES if f"`{cod}`" not in prompt]
+        assert not faltando, f"Finalidades ausentes do prompt: {faltando}"
+
+    def test_finalidade_fora_do_vocabulario_rejeitada(self):
+        from pydantic import ValidationError
+
+        from agents.schemas import PedidoCredito
+
+        with pytest.raises(ValidationError):
+            PedidoCredito(
+                setor="comercio",
+                porte="ME",
+                uf="SP",
+                anos_operacao=1,
+                faturamento_anual_declarado=1,
+                valor_solicitado=1,
+                finalidade="modernizacao",
+            )

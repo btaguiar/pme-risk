@@ -62,7 +62,7 @@ Cloud Run — API FastAPI (orquestração)
    ├─► 1. Extrator (Gemini) ─────► campos estruturados (setor, porte, UF, valor, prazo)
    │                               fora de escopo → recusa
    │
-   ├─► 2. Pesquisador ───────────► núcleo do quimera → dados públicos do CNPJ (BigQuery)
+   ├─► 2. Pesquisador ───────────► dados públicos do CNPJ (BrasilAPI; quimera-core quando publicável)
    │
    ├─► 3. Modelo de risco ───────► BigQuery ML → PD + fatores (versão do modelo registrada)
    │
@@ -90,6 +90,13 @@ responde "quais empresas?"; o pme-risk responde "qual o risco desta empresa?".
 Pré-requisito: publicar o quimera (hoje sem remote) ou, no mínimo, o núcleo.
 A Fase 1 não depende disso — pode começar antes.
 
+**Desvio registrado (2026-09-29):** com o quimera ainda sem remote e sua
+tabela em outro projeto GCP, a consulta de CNPJ usa a BrasilAPI (dados abertos
+da Receita, gratuita, sem chave — cabe na regra de sobrevivência do §7). Só o
+CNPJ sai do GCP; a resposta é reduzida aos campos de verificação (sem razão
+social, sócios ou contatos). A função é injetável: o quimera-core a substitui
+sem mudar o Pesquisador.
+
 ### Tradução GCP ↔ vocabulário das vagas
 
 As vagas pedem AWS com mais frequência que GCP. As competências são equivalentes
@@ -111,7 +118,7 @@ que o recrutador busca:
 |---|---|---|
 | Treinar o modelo de risco | Base pública rotulada (Home Credit; alternativas: German Credit, Taiwan Default) | Rótulos reais de inadimplência — não sintéticos |
 | Contexto Brasil | BCB — SCR.data (inadimplência por porte, setor, UF) | Prior / sanity check do modelo para PME brasileira |
-| Dados da empresa | CNPJ público (Receita), via núcleo do quimera | Idade, CNAE, porte, situação cadastral |
+| Dados da empresa | CNPJ público (Receita), via BrasilAPI (§3) | Idade, CNAE, porte, UF, situação cadastral |
 | Normas citáveis | LGPD art. 20; Res. CMN 4.966; política de crédito fictícia escrita para o projeto | Conferir texto vigente antes de citar |
 | Extração e recusa | Golden set sintético de ~50 pedidos pt-BR | Setores, portes, regiões, pedidos ambíguos e fora de escopo |
 
@@ -169,19 +176,22 @@ skew treino/serviço — ver README):
 | ECE | 0.0013 | — | baseline |
 | Holdout | 60.994 amostras | — | — |
 
-**Extração — `eval/laudo/results/laudo_eval_v6.json`** (método v5 + setor CNAE, ver README):
+**Extração — `eval/laudo/results/laudo_eval_v7.json`** (método v5 + setor CNAE +
+finalidade fechada; golden set de 80 itens, ver README):
 
 | Métrica | Valor | Meta | Status |
 |---|---|---|---|
-| F1 extração (micro) | 0.9601 | ≥ 0.90 | ✅ |
-| Recusa correta | 100% (11/11) | ≥ 0.95 | ✅ |
-| Recusa indevida | 2.56% (1/39) | — | ⚠️ |
-| Latência média | 7.23s | — | — |
+| F1 extração (micro) | 0.9868 (2 rodadas iguais) | ≥ 0.90 | ✅ |
+| F1 lote novo (`v7_novos`, 24 em escopo) | 1.0 / 0.9944 | — | ⚠️ ver ressalva |
+| Recusa correta | 100% (17/17) | ≥ 0.95 | ✅ |
+| Recusa indevida | 1.59% (1/63) | — | ⚠️ |
+| Latência média | 5.78s | — | — |
 
-> Ressalvas: notas CNAE do prompt cobrem casos do golden set; `finalidade`
-> (F1 0.86) segue texto livre. Ver README.
+> Ressalvas: o ganho de `finalidade` (0.86 → 0.99) é de método (sinônimos
+> viraram um código); o lote novo foi escrito junto com as regras do prompt e
+> não é holdout independente. v6 (F1 0.9601, 50 itens) segue no histórico.
 
-**Comparação de modelos no Extrator — `eval/laudo/results/laudo_eval_v6_*.json`**
+**Comparação de modelos no Extrator (v6, não refeita no v7) — `eval/laudo/results/laudo_eval_v6_*.json`**
 (2026-09-28, 2 rodadas por modelo, mesmo prompt e schema; alternativos só no eval):
 
 | Modelo | F1 médio | Latência | Decisão |
