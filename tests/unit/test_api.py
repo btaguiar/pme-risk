@@ -282,6 +282,13 @@ class TestDemoAberta:
         outro = {"X-Forwarded-For": "198.51.100.9"}
         assert response.post("/laudos", json=PEDIDO, headers=outro).status_code == 201
 
+    def test_pedido_invalido_nao_gasta_cota(self, client):
+        response, _ = client
+        ip = {"X-Forwarded-For": "203.0.113.50"}
+        for _ in range(5):
+            assert response.post("/laudos", json={"texto": "x"}, headers=ip).status_code == 422
+        assert response.post("/laudos", json=PEDIDO, headers=ip).status_code == 201
+
     def test_teto_global_429(self, client):
         response, fake = client
         fake.pedidos_hoje = 5

@@ -8,6 +8,7 @@ from __future__ import annotations
 import hmac
 import json
 import os
+from collections.abc import Callable
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
@@ -46,21 +47,30 @@ def autorizar_criacao(
     pipeline: PipelineDep,
     x_api_key: Annotated[str | None, Header()] = None,
     x_forwarded_for: Annotated[str | None, Header()] = None,
-) -> None:
+) -> Callable[[], None] | None:
     """Chave de analista → sem limite. Demo aberta → limites diários (api/limites.py).
 
     Chave enviada e errada é 401 mesmo na demo aberta: não cai no limite
     silenciosamente. Sem CRIACAO_PUBLICA, vale a regra antiga (chave exigida).
+
+    Devolve a função que consome a cota, e a rota a chama depois de validar o
+    corpo: dependências rodam antes da validação, e um pedido inválido (422)
+    não pode gastar uma das tentativas do dia do visitante.
     """
     valida = _chave_valida(x_api_key)
     if valida:
-        return
+        return None
     if x_api_key is not None and valida is False:
         raise HTTPException(status_code=401, detail="X-API-Key inválida")
     if not limites.criacao_publica():
         if valida is False:
             raise HTTPException(status_code=401, detail="X-API-Key ausente ou inválida")
-        return  # dev local sem chave configurada
+        return None  # dev local sem chave configurada
+    ip = limites.ip_do_cliente(x_forwarded_for, request.client.host if request.client else None)
+    return lambda: _consumir_cota(pipeline, ip)
+
+
+def _consumir_cota(pipeline: Pipeline, ip: str) -> None:
     retry = {"Retry-After": str(limites.segundos_ate_meia_noite_utc())}
     if pipeline.contar_pedidos_hoje() >= limites.limite_global():
         raise HTTPException(
@@ -68,7 +78,6 @@ def autorizar_criacao(
             detail="A demo atingiu o limite diário de laudos. Tente novamente amanhã.",
             headers=retry,
         )
-    ip = limites.ip_do_cliente(x_forwarded_for, request.client.host if request.client else None)
     if not limites.POR_IP.tentar(ip, limites.limite_por_ip()):
         raise HTTPException(
             status_code=429,
@@ -85,8 +94,14 @@ class PedidoTexto(BaseModel):
     prazo_meses: int = Field(ge=1, le=120, description="Prazo do crédito em meses")
 
 
-@router.post("/laudos", status_code=201, dependencies=[Depends(autorizar_criacao)])
-def criar_laudo(pedido: PedidoTexto, pipeline: PipelineDep) -> dict[str, str]:
+@router.post("/laudos", status_code=201)
+def criar_laudo(
+    pedido: PedidoTexto,
+    pipeline: PipelineDep,
+    consumir_cota: Annotated[Callable[[], None] | None, Depends(autorizar_criacao)],
+) -> dict[str, str]:
+    if consumir_cota is not None:  # corpo já validado: 422 não gasta cota
+        consumir_cota()
     try:
         resultado = pipeline.gerar(pedido.texto, prazo_meses=pedido.prazo_meses)
     except genai_errors.APIError as e:
