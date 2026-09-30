@@ -153,6 +153,9 @@ não um modelo pronto para concessão real.
 >   **v2 (modelo v3, 62 itens, 2026-09-29):** fidedignidade 99.89% (multi) ×
 >   99.95% (baseline) — abaixo da meta de 100%, por números mal formatados do
 >   Redator; marcação 98.2–98.5% × 96.4–97.1% — `laudo_texto_v2.json`.
+>   **v3 (formatação brasileira no Redator, 2026-09-30):** fidedignidade
+>   99.71–99.85% (multi) × 99.77–99.81% (baseline); marcação 99.4–100% ×
+>   99.3–99.7% — `laudo_texto_v3.json`.
 
 **Baselines obrigatórios:**
 - **Modelo:** regressão logística simples. Modelo mais complexo só entra se

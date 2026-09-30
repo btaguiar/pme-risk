@@ -222,30 +222,37 @@ análise de LGPD (transferência internacional, retenção, uso para treino).
 > (4) Todos raciocinam por padrão (~750–950 tokens de saída por pedido); o custo
 > do Gemini não é medido pelo eval (só o `usage` dos outros provedores).
 
-### Laudo (texto) — `eval/laudo/results/laudo_texto_v2.json`
+### Laudo (texto) — `eval/laudo/results/laudo_texto_v3.json`
 
 Multi-agente (Extrator → Pesquisador → Redator) contra o **baseline de chamada
 única** exigido pelo PLANO §5 (texto bruto + PD → laudo, mesmo modelo, regras e
-schema de saída), com o **modelo v3** e a calibração SCR. 62 itens em escopo × 2
-rodadas por braço; a PD é a mesma nos dois.
+schema de saída), com o **modelo v3**, a calibração SCR e o prompt do Redator
+com **formatação brasileira** (PD 3,12%, R$ 300 mil, fatores com 3 casas,
+setor por extenso). 62 itens em escopo × 2 rodadas por braço.
 
 | Métrica (PLANO §5) | Meta | Multi-agente r1 / r2 | Baseline r1 / r2 |
 |---|---|---|---|
-| **Fidedignidade** — afirmações verificáveis com evidência | 100% | 99.89% / 99.89% (1.847 · 1.850) | 99.95% / 99.95% (1.994 · 1.979) |
-| Laudos 100% fiéis | — | 61/62 · 61/62 | 61/62 · 61/62 |
+| **Fidedignidade** — afirmações verificáveis com evidência | 100% | 99.85% / 99.71% (2.039 · 2.083) | 99.77% / 99.81% (2.148 · 2.155) |
 | PD citada exatamente | — | 62/62 · 62/62 | 62/62 · 62/62 |
-| **Verificado × declarado** — marcação correta por campo no texto | 100% | **98.15% / 98.46%** | 96.38% / 97.13% |
+| **Verificado × declarado** — marcação correta por campo no texto | 100% | **99.38% / 100%** | 99.31% / 99.65% |
 | Classificação estruturada por campo (`fonte_por_campo`) | — | **100%** | 0% (texto livre) |
-| Latência da redação | — | 15.4s / 14.4s | 13.1s / 14.4s |
+| Latência da redação (mediana) | — | 26.9s / 22.9s | — |
 
-> **Meta de 100% de fidedignidade não atingida no v2.** As afirmações sem
-> evidência são erros reais do Redator, mantidos na conta: números em formato
-> ambíguo ("R$ 2.500.000.00", misturando milhar pt-BR e decimal en — 2 por
-> rodada no multi-agente), um "5" sem fonte e uma norma citada fora de
-> `evidencias` (baseline). Três lacunas do juiz apareceram com o v3 e foram
-> corrigidas com teste, sem mudar nenhuma métrica do v1 (rejulgado idêntico):
-> o nome "SBA 7(a)" não é número; CNPJ formatado vale se os dígitos batem com
-> o pedido; o valor de setor entre crases vale se é o do pedido.
+> **Meta de 100% de fidedignidade não atingida.** O que resta são erros reais,
+> mantidos na conta: "negócios com **5** anos ou mais" (a fronteira da faixa de
+> idade, que o juiz não conhece — o exemplo do prompt induziu a frase), o setor
+> errado do Extrator citado entre crases (agência de publicidade → J; farmácia
+> → Q) e normas citadas fora de `evidencias`. Lacuna do juiz corrigida com
+> teste: "Art. 20 da Lei Geral de Proteção de Dados" por extenso é norma, não
+> número (v1 e v2 rejulgados idênticos).
+>
+> **Latência:** a redação levou mediana de 23–27 s com 4 chamadas em paralelo,
+> contra 14–15 s no v2, com textos do mesmo tamanho (~2.300 caracteres) — o
+> Gemini estava mais lento no dia. Como o Firebase Hosting corta em 60 s, cada
+> chamada ao Gemini tem timeout de 45 s (`agents/gemini.py`) e vira 503 claro.
+>
+> Histórico: v2 (`laudo_texto_v2.json`, sem a formatação) — fidedignidade
+> 99.89% × 99.95%, marcação 98.2–98.5% × 96.4–97.1%.
 
 **Juiz determinístico** (`eval/laudo/fidedignidade.py`, sem LLM): todo número do
 laudo precisa bater com o pedido, a PD ou os fatores (aceita arredondamento,

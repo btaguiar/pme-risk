@@ -157,6 +157,19 @@ class TestLlmIndisponivel:
         assert r.status_code == 503
         assert r.headers["Retry-After"] == "30"
 
+    def test_timeout_do_llm_vira_503(self, client):
+        import httpx
+
+        response, fake = client
+
+        def gerar(texto: str, prazo_meses: int | None = None):
+            raise httpx.ReadTimeout("lento")
+
+        fake.gerar = gerar
+        r = response.post("/laudos", json=PEDIDO)
+        assert r.status_code == 503
+        assert r.headers["Retry-After"] == "30"
+
     def test_resposta_fora_do_schema_vira_502(self, client):
         from agents.gemini import RespostaInvalidaError
 

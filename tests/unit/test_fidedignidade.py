@@ -172,3 +172,10 @@ def test_valor_categorico_do_pedido_entre_crases():
     assert ok.fatores_desconhecidos == []
     errado = julgar(texto, [], 0.1, [], {"setor": "comercio"}, "")
     assert errado.fatores_desconhecidos == ["saude_servicos_sociais"]
+
+
+def test_lgpd_por_extenso_e_norma_nao_numero():
+    texto = "Direito à revisão conforme o Art. 20 da Lei Geral de Proteção de Dados (LGPD)."
+    assert extrair_numeros(texto) == []
+    j = julgar(texto, ["LGPD art. 20"], 0.1, [], {}, "")
+    assert j.numeros_sem_evidencia == [] and j.normas_sem_citacao == []

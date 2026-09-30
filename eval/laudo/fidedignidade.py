@@ -30,6 +30,11 @@ NORMAS_PERMITIDAS = {
 _PADROES_NORMA = [
     (re.compile(r"LGPD[^\n]{0,40}?art(?:igo|\.)?\s*20\b", re.I), "lgpd_art20"),
     (re.compile(r"art(?:igo|\.)?\s*20[^\n]{0,20}?LGPD", re.I), "lgpd_art20"),
+    # Nome por extenso: "Art. 20 da Lei Geral de Proteção de Dados (LGPD)"
+    (
+        re.compile(r"art(?:igo|\.)?\s*20[^\n]{0,20}?Lei Geral de Prote[çc][ãa]o de Dados", re.I),
+        "lgpd_art20",
+    ),
     (re.compile(r"Res(?:olução|\.)?\s*(?:CMN\s*)?(?:n[º°.]?\s*)?4\.?966", re.I), "cmn_4966"),
     (re.compile(r"Pol[íi]tica de cr[ée]dito(?: PME)?", re.I), "politica_pme"),
     (

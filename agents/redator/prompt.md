@@ -18,13 +18,29 @@ a decisão do modelo de risco de forma clara, auditável e fundamentada.
    ATIVA também deve ser informada. Sem `cnpj_dados`, não mencione consulta
    de CNPJ.
 6. **Fatores e ajustes Brasil** — os fatores vêm em escala logit; cite cada um
-   pelo nome entre crases e com o valor exato de `resultado_modelo.fatores`.
+   pelo nome entre crases e com o valor de `resultado_modelo.fatores`
+   arredondado a 3 casas (ver Formatação).
    `ajuste_porte_br` e `ajuste_uf_br` não são variáveis do modelo: são a
    calibração pela inadimplência relativa brasileira (SCR.data, Banco Central)
    do porte e da UF — valor positivo aumenta a PD, negativo reduz. O modelo foi
    treinado em empréstimos a pequenas empresas dos EUA (SBA 7(a)); diga isso
    uma vez, na análise. Não converta os valores em percentuais nem em
    multiplicadores.
+
+## Formatação (o laudo é lido por pessoas)
+
+Escreva em Markdown e com números no padrão brasileiro — nunca copie o número
+cru do JSON (`300000.0`, `0.0311967`):
+
+- **PD**: percentual com 2 casas e vírgula — `0.0311967` → **3,12%**
+- **Valores em reais**: `R$ 300 mil`, `R$ 2 milhões`, `R$ 1,2 milhão` (ou
+  `R$ 300.000,00`); nunca `300000.0`
+- **Fatores**: 3 casas, vírgula decimal e sinal — `-0.8493933` → **-0,849**
+- **Inteiros**: sem casa decimal — `5.0` anos → **5 anos**; `36` meses
+- **Setor e finalidade**: em linguagem natural (setor `saude_servicos_sociais`
+  → "saúde humana e serviços sociais"; finalidade `obras_reforma` → "obras e
+  reforma"); nomes técnicos só entre crases, quando forem fatores
+- Títulos das seções com `##` e dados em lista (`-`)
 
 ## Estrutura do laudo
 
@@ -43,14 +59,14 @@ a decisão do modelo de risco de forma clara, auditável e fundamentada.
 
 ## Exemplo de redação
 
-> O solicitante (⚠️ declarado) opera há 5 anos no setor de saúde.
-> O modelo de risco atribuiu PD de 15,2% (faixa: alto).
+> O solicitante (⚠️ declarado) opera há 5 anos no setor de saúde e pede
+> R$ 300 mil (⚠️ declarado). O modelo de risco atribuiu PD de 15,20% (faixa: alto).
 >
 > Principais fatores:
-> - `secao_cnae`: -1.173 (o setor de saúde tem perda histórica abaixo da média)
-> - `faixa_idade`: -0.984 (negócio com 5 anos ou mais reduz o risco)
-> - `log_valor_usd`: +0.328 (valores menores concentram mais perdas no histórico)
-> - `ajuste_uf_br`: +0.679 (a inadimplência PME da UF está acima da média brasileira)
+> - `secao_cnae`: -1,173 (o setor de saúde tem perda histórica abaixo da média)
+> - `faixa_idade`: -0,984 (negócio com 5 anos ou mais reduz o risco)
+> - `log_valor_usd`: +0,328 (valores menores concentram mais perdas no histórico)
+> - `ajuste_uf_br`: +0,679 (a inadimplência PME da UF está acima da média brasileira)
 >
 > Recomenda-se análise adicional do fluxo de caixa antes da aprovação,
 > conforme Res. CMN 4.966. O solicitante tem direito à revisão desta

@@ -3,6 +3,11 @@
 O cliente google-genai não repete requisições por padrão: um 429
 (RESOURCE_EXHAUSTED, cota por minuto) virava 500 direto na API — visto duas
 vezes na validação de 2026-09-28. Backoff exponencial: ~2+4+8+16s no pior caso.
+
+Timeout por requisição: sem ele, uma conexão lenta segurava a chamada sem
+limite (visto no eval de 2026-09-30: redação com pico de 130 s). A demo
+pública passa pelo Firebase Hosting, que corta em 60 s — melhor falhar antes,
+com 503 claro (api/routes/laudos.py), do que o visitante ver um 504 do proxy.
 """
 
 from __future__ import annotations
@@ -12,13 +17,16 @@ import os
 from google.genai import types
 from pydantic import BaseModel, ValidationError
 
+TIMEOUT_MS = 45_000
+
 HTTP_OPTIONS = types.HttpOptions(
+    timeout=TIMEOUT_MS,
     retry_options=types.HttpRetryOptions(
         attempts=5,
         initial_delay=2.0,
         max_delay=30.0,
         http_status_codes=[429, 500, 503, 504],
-    )
+    ),
 )
 
 

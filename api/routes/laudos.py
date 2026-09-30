@@ -11,6 +11,7 @@ import os
 from collections.abc import Callable
 from typing import Annotated
 
+import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from google.genai import errors as genai_errors
 from pydantic import BaseModel, Field
@@ -114,6 +115,13 @@ def criar_laudo(
                 headers={"Retry-After": "30"},
             ) from e
         raise
+    except httpx.TimeoutException as e:
+        # Timeout por requisição do Gemini (agents/gemini.py) — transitório
+        raise HTTPException(
+            status_code=503,
+            detail="O serviço de LLM demorou demais para responder; tente novamente.",
+            headers={"Retry-After": "30"},
+        ) from e
     except RespostaInvalidaError as e:
         # O LLM respondeu fora do schema (vazio, truncado): falha do upstream.
         raise HTTPException(status_code=502, detail="Resposta inválida do serviço de LLM.") from e
