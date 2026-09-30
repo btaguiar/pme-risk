@@ -29,5 +29,9 @@
       "ece": 0.0042
     }
   },
-  "nota": "Holdout temporal FY2014-2015 (D5). Candidato boosted_tree_v3 falhou com internalError 80038528 (3 tentativas, igual ao v1); baseline segue sozinho (D6)."
+  "sanidade_setor_sba_x_scr": {
+    "rho": 0.1429,
+    "n_secoes": 20
+  },
+  "nota": "Holdout temporal FY2014-2015 (D5). Candidato boosted_tree_v3 falhou com internalError 80038528 (3 tentativas, igual ao v1); baseline segue sozinho (D6). SCR: 12 data-bases 2025-08..2026-07."
 }

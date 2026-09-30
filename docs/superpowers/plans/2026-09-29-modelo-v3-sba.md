@@ -128,7 +128,7 @@ RR_uf    = inad_SCR(Micro+Pequeno, uf) / inad_SCR(Micro+Pequeno)
 
 - [x] KS, AUC, Brier, **Brier ingênuo**, ECE no holdout temporal FY2014–2015. **KS 0,1354 · AUC 0,5845 · Brier 0,0638 < ingênuo 0,0640 ✅ · ECE 0,0071** (n=63.502).
 - [x] Métricas também **por safra** (2014 × 2015), para ver a estabilidade. Brier bate o ingênuo nas duas (0,0610/0,0612 e 0,0662/0,0664); AUC 0,5903 × 0,5799.
-- [x] **Sanidade de setor:** correlação de Spearman entre a perda por seção na SBA e a inadimplência por seção no SCR. Vai no JSON, sem limite de aceite (é checagem, não meta). *(preenchida após a Task 5 — depende de `scr_pj_raw`)*
+- [x] **Sanidade de setor:** correlação de Spearman entre a perda por seção na SBA e a inadimplência por seção no SCR. Vai no JSON, sem limite de aceite (é checagem, não meta). *(ρ = 0,1429 em 20 seções — positiva fraca; registrada no logreg_v3.json após a Task 5)*
 - [x] Critério: `logreg_v3` bate o Brier ingênuo. Candidato só substitui se cumprir D6. *(candidato falhou no treino — Task 3)*
 - [x] Commit do JSON.
 
@@ -138,11 +138,11 @@ RR_uf    = inad_SCR(Micro+Pequeno, uf) / inad_SCR(Micro+Pequeno)
 - Create: `model/dados/ingest_scr.py`, `model/sql/10_scr_fatores.sql`, `model/calibracao.py`
 - Test: `tests/unit/test_calibracao.py`
 
-- [ ] Ingerir 12 meses de SCR.data v2 (só PJ; colunas do levantamento §2) em `scr_pj_raw`.
-- [ ] `scr_fatores`: `RR_porte` e `RR_uf` com o piso de carteira.
-- [ ] `calibracao.aplicar(pd, porte, uf, fatores) -> (pd_final, [("ajuste_porte_br", Δlogit), ("ajuste_uf_br", Δlogit)])`.
-- [ ] Testes: RR = 1 não muda a PD; RR > 1 aumenta; resultado sempre em (0, 1); UF abaixo do piso → sem ajuste.
-- [ ] Commit.
+- [x] Ingerir 12 meses de SCR.data v2 (só PJ; colunas do levantamento §2) em `scr_pj_raw`. *(1.535.774 linhas, data-bases 2025-08..2026-07; CSV do BCB mistura latin-1 e UTF-8 por campo — decodificação tolerante por valor)*
+- [x] `scr_fatores`: `RR_porte` e `RR_uf` com o piso de carteira. *(RR_porte: Micro 0,78, Pequeno 1,08; RR_uf: 0,79 SP a 1,97 AC; piso R$ 1 bi/mês de carteira PME — só RR fica sem ajusto)*
+- [x] `calibracao.aplicar(pd, porte, uf, fatores) -> (pd_final, [("ajuste_porte_br", Δlogit), ("ajuste_uf_br", Δlogit)])`.
+- [x] Testes: RR = 1 não muda a PD; RR > 1 aumenta; resultado sempre em (0, 1); UF abaixo do piso → sem ajuste.
+- [x] Commit.
 
 ### Task 6: Referência BNDES (drift e prazo padrão)
 
