@@ -56,11 +56,12 @@ Três features é pouco, e é de propósito: é o que existe dos dois lados sem
 vazamento nem proxy inventado. Espera-se AUC modesta. O ganho do v3 está na
 **validade** da base, não na discriminação. Isso vai escrito no README.
 
-Faixas de idade (as da SBA, fundindo as ambíguas):
-`startup` (Startup e New < 1 ano) · `1_3` (< 3 anos e < 2) · `3_5` (< 4 e < 5) ·
-`5_mais` (Existing, 5 or more) · `desconhecida` (Unanswered, Change of Ownership,
-"Existing or more than 2 years", vazio). No serviço, `anos_operacao` < 1 →
-`startup`, < 3 → `1_3`, < 5 → `3_5`, senão `5_mais`.
+Faixas de idade: `startup` (abertura; < 1 ano) · `2_5` (≥ 2 e < 5) ·
+`5_mais` · `desconhecida` (Unanswered, vazio, códigos antigos ambíguos, troca de
+controle). **A SBA não tem faixa de 1–2 anos**: no serviço, `anos_operacao` < 2
+→ `startup` (hipótese: faixa mais próxima em risco), < 5 → `2_5`, senão
+`5_mais`. Perda no recorte de treino: 9,48% (abertura), 8,35% (< 1 ano),
+7,2–8,5% (2–5), 6,04% (5+). Detalhes em `model/mapeamentos.py`.
 
 ## Calibração brasileira (SCR.data)
 
@@ -102,10 +103,10 @@ RR_uf    = inad_SCR(Micro+Pequeno, uf) / inad_SCR(Micro+Pequeno)
 - Create: `model/mapeamentos.py`
 - Test: `tests/unit/test_mapeamentos.py`
 
-- [ ] `NAICS_PARA_SECAO`: por prefixo, do mais específico para o mais geral (ex.: `2211` → `eletricidade_gas`, `2213` → `agua_esgoto_residuos`, `532` → `administrativas_servicos_complementares`, `44`/`45`/`42` → `comercio`, `31`–`33` → `industria_transformacao`). Tabela com a fonte (concordância NAICS × ISIC do US Census) no docstring.
-- [ ] `faixa_idade_sba(business_age)` e `faixa_idade_pedido(anos)` com as faixas acima.
-- [ ] Testes: todo NAICS de 2 dígitos presente no CSV mapeia para uma chave de `SETORES_CNAE`; as duas funções de faixa produzem o mesmo conjunto de valores.
-- [ ] Commit.
+- [x] `NAICS_PARA_SECAO`: por prefixo, do mais específico para o mais geral (ex.: `2211` → `eletricidade_gas`, `2213` → `agua_esgoto_residuos`, `532` → `administrativas_servicos_complementares`, `44`/`45`/`42` → `comercio`, `31`–`33` → `industria_transformacao`). Tabela com a fonte (concordância NAICS × ISIC do US Census) no docstring.
+- [x] `faixa_idade_sba(business_age)` e `faixa_idade_pedido(anos)` com as faixas acima.
+- [x] Testes: todo NAICS de 2 dígitos mapeia para uma chave de `SETORES_CNAE`; as duas funções de faixa produzem o mesmo conjunto de valores. Cobertura real: 1.268 códigos distintos, 2 linhas sem seção (NAICS vazio).
+- [x] Commit.
 
 ### Task 3: Feature set v3 e treino (baseline + candidato)
 
