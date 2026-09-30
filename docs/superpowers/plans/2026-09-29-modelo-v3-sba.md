@@ -179,8 +179,11 @@ RR_uf    = inad_SCR(Micro+Pequeno, uf) / inad_SCR(Micro+Pequeno)
 
 ### Task 9: Deploy
 
-- [ ] Build local, smoke do container (POST real), push, `deploy_api.sh` e `deploy_drift.sh` com a mesma `IMAGE`, smoke no Cloud Run, execução manual do job de drift.
-- [ ] Atualizar o `model_registry` em produção (v3 `production`, v2 `retired`).
+- [x] Build local, smoke do container (POST real), push, `deploy_api.sh` e `deploy_drift.sh` com a mesma `IMAGE`, smoke no Cloud Run, execução manual do job de drift.
+- [x] Atualizar o `model_registry` em produção (v3 `production`, v2 `retired`).
+
+---
+- [x] Feito em 2026-09-29: imagem `6a731f5`, revisão `pme-risk-api-00010`; smoke 403/200/401/404 e POST real 201 (logreg_v3, ajustes SCR nos fatores); job de drift na mesma imagem, execução com `exit(0)` contra `bndes_referencia`.
 
 ---
 
