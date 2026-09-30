@@ -11,7 +11,7 @@ aprova ou rejeita antes do laudo final.
 |---|---|---|
 | 1 — Modelo | ✅ Completa (v3) | LOGISTIC_REG `logreg_v3` treinado em empréstimos reais a PME (SBA 7(a)), calibrado ao risco relativo brasileiro (SCR.data); métricas em `eval/model/results/` |
 | 2 — Laudo | ✅ Completa | Agentes, portão humano, auditoria; extração F1 0.99, fidedignidade do laudo 99.9% (v2), baseline de chamada única medido |
-| 3 — Produto | ✅ Em produção (privado) | API no Cloud Run (IAM + X-API-Key no Secret Manager), job de drift semanal; smoke pós-deploy executado |
+| 3 — Produto | ✅ Demo pública | API + frontend no Cloud Run; visitante gera laudo dentro de limite diário, só analista (X-API-Key no Secret Manager) decide; job de drift semanal; smoke pós-deploy executado |
 
 ## Arquitetura
 
