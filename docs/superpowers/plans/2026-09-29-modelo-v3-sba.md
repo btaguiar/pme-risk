@@ -89,12 +89,12 @@ RR_uf    = inad_SCR(Micro+Pequeno, uf) / inad_SCR(Micro+Pequeno)
 - Create: `model/dados/ingest_sba.py`, `model/sql/06_load_sba_raw.sql` (se necessário)
 - Test: `tests/unit/test_ingest_sba.py`
 
-- [ ] Baixar `FOIA_7a_FY2010_FY2019_asof_260630.csv` (URL fixa no código, versão no nome da tabela).
-- [ ] **Descartar PII na leitura**: nome, endereço, CEP do tomador e dados do banco. Só entram as colunas usadas + `ApprovalFY`, `LoanStatus`, `RevolverStatus`.
-- [ ] Normalizar `LoanStatus` (`"P I F"` → `PIF`).
-- [ ] Carregar em `${BQ_DATASET}.sba_7a_raw` (particionada por `ApprovalFY`).
-- [ ] Teste: fixture de 10 linhas com PII → a saída não tem colunas de PII e `P I F` vira `PIF`.
-- [ ] Commit.
+- [x] Baixar `FOIA_7a_FY2010_FY2019_asof_260630.csv` (URL fixa no código, versão no nome da tabela).
+- [x] **Descartar PII na leitura**: nome, endereço, CEP do tomador e dados do banco. Só entram as colunas usadas + `ApprovalFY`, `LoanStatus`, `RevolverStatus`.
+- [x] Normalizar `LoanStatus` (`"P I F"` → `PIF`).
+- [x] Carregar em `${BQ_DATASET}.sba_7a_raw` (particionada por `ApprovalFY`).
+- [x] Teste: fixture de 10 linhas com PII → a saída não tem colunas de PII e `P I F` vira `PIF`.
+- [x] Commit.
 
 ### Task 2: Mapeamentos NAICS → CNAE e BusinessAge → faixa
 
