@@ -112,9 +112,13 @@ export function Layout() {
             <span className="text-faint">·</span>
             <span className="text-faint">pme-risk</span>
           </div>
-          <p className="max-w-2xl md:text-right">
-            PD vem do modelo, nunca do LLM. Toda afirmação carrega evidência. A decisão final é humana.
-          </p>
+          <div className="max-w-2xl space-y-1 md:text-right">
+            <p>PD vem do modelo, nunca do LLM. Toda afirmação carrega evidência. A decisão final é humana.</p>
+            <p className="text-xs text-faint">
+              Projeto de portfólio. Modelo treinado em PME dos EUA (SBA 7(a)) e ajustado ao risco relativo brasileiro
+              (SCR.data) — não use para decisão de crédito real. Use apenas dados fictícios.
+            </p>
+          </div>
         </div>
       </footer>
     </div>

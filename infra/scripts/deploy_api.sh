@@ -55,8 +55,9 @@ source "$(dirname "$0")/build_image.sh"
 
 # Privado por padrão: só identidades com roles/run.invoker chamam o serviço
 # (curl -H "Authorization: Bearer $(gcloud auth print-identity-token)").
-# ALLOW_UNAUTHENTICATED=1 abre a demo pública — aí o X-API-Key é a única barreira
-# do POST /laudos (GET/healthz ficam abertos).
+# ALLOW_UNAUTHENTICATED=1 abre a demo pública. Com CRIACAO_PUBLICA=1, visitantes
+# criam laudos sem chave dentro de LIMITE_POR_IP_DIA / LIMITE_GLOBAL_DIA
+# (api/limites.py); a decisão do portão humano exige X-API-Key sempre.
 if [ "${ALLOW_UNAUTHENTICATED:-0}" = "1" ]; then
   AUTH_FLAG="--allow-unauthenticated"
 else
@@ -71,7 +72,7 @@ gcloud run deploy "${SERVICE}" \
   --project="${PROJECT_ID}" \
   --region="${REGION}" \
   --service-account="${SA}" \
-  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},BQ_DATASET=${BQ_DATASET:-pme_risk}" \
+  --set-env-vars="GCP_PROJECT_ID=${PROJECT_ID},BQ_DATASET=${BQ_DATASET:-pme_risk},CRIACAO_PUBLICA=${CRIACAO_PUBLICA:-0},LIMITE_POR_IP_DIA=${LIMITE_POR_IP_DIA:-3},LIMITE_GLOBAL_DIA=${LIMITE_GLOBAL_DIA:-30}" \
   --set-secrets="API_KEY_SECRET=${SECRET}:latest" \
   --min-instances=0 \
   --max-instances=1 \

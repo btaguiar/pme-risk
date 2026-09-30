@@ -210,6 +210,11 @@ class Pipeline:
     def listar(self, limite: int = 20) -> list[dict]:
         return self.portao.listar(limite)
 
+    def contar_pedidos_hoje(self) -> int:
+        """Pedidos do dia UTC corrente — teto global da demo aberta (api/limites.py)."""
+        hoje = datetime.now(UTC).replace(hour=0, minute=0, second=0, microsecond=0)
+        return self.auditoria.contar_pedidos_desde(hoje)
+
     def decidir(
         self,
         laudo_id: str,

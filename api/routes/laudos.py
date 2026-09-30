@@ -15,7 +15,7 @@ from google.genai import errors as genai_errors
 from pydantic import BaseModel, Field
 
 from agents.gemini import RespostaInvalidaError
-from api import frontend
+from api import frontend, limites
 from api.pipeline import LaudoCriado, Pipeline, Recusa, get_pipeline
 
 router = APIRouter(tags=["laudos"])
@@ -24,16 +24,58 @@ PipelineDep = Annotated[Pipeline, Depends(get_pipeline)]
 
 
 def verificar_api_key(x_api_key: Annotated[str | None, Header()] = None) -> None:
-    """Protege endpoints custosos (Gemini + BigQuery) da demo pública.
+    """Rotas só de analista (decisão do portão humano).
 
     API_KEY_SECRET definido → exige header X-API-Key igual (compare_digest).
     Sem a env var → aberto (desenvolvimento local e testes).
     """
+    if _chave_valida(x_api_key) is False:
+        raise HTTPException(status_code=401, detail="X-API-Key ausente ou inválida")
+
+
+def _chave_valida(x_api_key: str | None) -> bool | None:
+    """True/False se há chave configurada; None se não há (dev local)."""
     esperado = os.environ.get("API_KEY_SECRET")
     if not esperado:
+        return None
+    return x_api_key is not None and hmac.compare_digest(x_api_key, esperado)
+
+
+def autorizar_criacao(
+    request: Request,
+    pipeline: PipelineDep,
+    x_api_key: Annotated[str | None, Header()] = None,
+    x_forwarded_for: Annotated[str | None, Header()] = None,
+) -> None:
+    """Chave de analista → sem limite. Demo aberta → limites diários (api/limites.py).
+
+    Chave enviada e errada é 401 mesmo na demo aberta: não cai no limite
+    silenciosamente. Sem CRIACAO_PUBLICA, vale a regra antiga (chave exigida).
+    """
+    valida = _chave_valida(x_api_key)
+    if valida:
         return
-    if x_api_key is None or not hmac.compare_digest(x_api_key, esperado):
-        raise HTTPException(status_code=401, detail="X-API-Key ausente ou inválida")
+    if x_api_key is not None and valida is False:
+        raise HTTPException(status_code=401, detail="X-API-Key inválida")
+    if not limites.criacao_publica():
+        if valida is False:
+            raise HTTPException(status_code=401, detail="X-API-Key ausente ou inválida")
+        return  # dev local sem chave configurada
+    retry = {"Retry-After": str(limites.segundos_ate_meia_noite_utc())}
+    if pipeline.contar_pedidos_hoje() >= limites.limite_global():
+        raise HTTPException(
+            status_code=429,
+            detail="A demo atingiu o limite diário de laudos. Tente novamente amanhã.",
+            headers=retry,
+        )
+    ip = limites.ip_do_cliente(x_forwarded_for, request.client.host if request.client else None)
+    if not limites.POR_IP.tentar(ip, limites.limite_por_ip()):
+        raise HTTPException(
+            status_code=429,
+            detail=f"Limite de {limites.limite_por_ip()} laudos por dia atingido. "
+            "Tente novamente amanhã.",
+            headers=retry,
+        )
 
 
 class PedidoTexto(BaseModel):
@@ -43,7 +85,7 @@ class PedidoTexto(BaseModel):
     prazo_meses: int = Field(ge=1, le=120, description="Prazo do crédito em meses")
 
 
-@router.post("/laudos", status_code=201, dependencies=[Depends(verificar_api_key)])
+@router.post("/laudos", status_code=201, dependencies=[Depends(autorizar_criacao)])
 def criar_laudo(pedido: PedidoTexto, pipeline: PipelineDep) -> dict[str, str]:
     try:
         resultado = pipeline.gerar(pedido.texto, prazo_meses=pedido.prazo_meses)

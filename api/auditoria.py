@@ -55,3 +55,21 @@ class TrilhaAuditoria:
         errors = self.client.insert_rows_json(self.table_id, [row])
         if errors:
             raise RuntimeError(f"Erro ao registrar auditoria: {errors}")
+
+    def contar_pedidos_desde(self, inicio: datetime) -> int:
+        """Pedidos (laudos e recusas) registrados desde `inicio`.
+
+        Decisões humanas também entram na trilha, mas não são pedidos: ficam
+        de fora (`decisao_humana IS NULL`). Base do teto global da demo aberta
+        (api/limites.py).
+        """
+        query = f"""
+            SELECT COUNT(DISTINCT laudo_id) AS n
+            FROM `{self.table_id}`
+            WHERE criado_em >= @inicio AND decisao_humana IS NULL
+        """
+        config = bigquery.QueryJobConfig(
+            query_parameters=[bigquery.ScalarQueryParameter("inicio", "TIMESTAMP", inicio)]
+        )
+        linhas = list(self.client.query(query, job_config=config).result())
+        return int(linhas[0]["n"]) if linhas else 0

@@ -133,8 +133,15 @@ export function NovoPedido() {
         setEstado({
           tipo: "erro",
           tom: "erro",
-          titulo: "Chave da API ausente ou inválida",
-          mensagem: "Informe a chave da demo em “Chave de acesso” e tente novamente.",
+          titulo: "Chave de analista inválida",
+          mensagem: "Corrija ou apague a chave em “Chave de analista” — sem chave, a demo aceita pedidos dentro do limite diário.",
+        });
+      } else if (r.status === 429) {
+        setEstado({
+          tipo: "erro",
+          tom: "recusa",
+          titulo: "Limite diário da demo atingido",
+          mensagem: detalheErro(r.erro, r.status),
         });
       } else if (r.status === 503) {
         setEstado({
@@ -323,7 +330,7 @@ export function NovoPedido() {
                 className="flex w-full items-center justify-between gap-3 px-4 py-3 text-sm text-muted hover:text-ink"
               >
                 <span className="flex items-center gap-2">
-                  <KeyRound className="size-4" /> Chave de acesso
+                  <KeyRound className="size-4" /> Chave de analista <span className="text-faint">(opcional)</span>
                   {chave && <span className="rounded-full bg-accent-soft px-2 py-0.5 text-[11px] text-accent">salva</span>}
                 </span>
                 <ChevronDown className={cx("size-4 transition-transform", chaveAberta && "rotate-180")} />
@@ -346,12 +353,19 @@ export function NovoPedido() {
                         onBlur={() => guardarChave(chave.trim())}
                         className="h-10 w-full rounded-lg border border-line-strong bg-bg/60 px-3 font-mono text-sm focus:border-accent/60 focus:outline-none focus:ring-4 focus:ring-accent/10"
                       />
-                      <p className="mt-2 text-xs text-faint">Enviada só no header X-API-Key deste navegador. Necessária na demo pública.</p>
+                      <p className="mt-2 text-xs text-faint">Enviada só no header X-API-Key deste navegador. Sem chave, a demo aceita um número limitado de laudos por dia; analistas com chave não têm limite e podem decidir no portão humano.</p>
                     </div>
                   </motion.div>
                 )}
               </AnimatePresence>
             </div>
+
+            <Aviso tom="info" titulo="Use dados fictícios">
+              <p>
+                O pedido fica registrado na trilha de auditoria da demo, e um CNPJ informado é consultado na base
+                pública da Receita. Não informe dados reais de pessoas ou empresas.
+              </p>
+            </Aviso>
 
             <div className="flex flex-wrap items-center gap-3">
               <Button type="submit" tamanho="lg" disabled={gerando}>

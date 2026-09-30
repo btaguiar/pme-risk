@@ -8,6 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
 from api.pipeline import Pipeline, get_pipeline
+from api.routes.laudos import verificar_api_key
 from api.routes.portao_humano import LaudoJaDecididoError
 
 router = APIRouter(tags=["laudos"])
@@ -21,7 +22,8 @@ class DecisaoRequest(BaseModel):
     observacao: str | None = None
 
 
-@router.patch("/laudos/{laudo_id}/decisao")
+# Só analista decide: com a demo aberta, qualquer um cria laudo, ninguém de fora aprova
+@router.patch("/laudos/{laudo_id}/decisao", dependencies=[Depends(verificar_api_key)])
 def decidir_laudo(laudo_id: str, body: DecisaoRequest, pipeline: PipelineDep) -> dict:
     try:
         row = pipeline.decidir(laudo_id, body.decisao, body.decidido_por, body.observacao)

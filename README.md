@@ -346,12 +346,21 @@ curl -X PATCH http://localhost:8000/laudos/<laudo_id>/decisao \
 Pedidos fora de escopo (ex.: pessoa física) retornam `422` com
 `{"detail": {"motivo_recusa": ...}}` — e a recusa entra na trilha de auditoria.
 
-**Proteção:** o deploy é **privado por padrão** (Cloud Run IAM — exige
-`Authorization: Bearer $(gcloud auth print-identity-token)`). Além disso,
-`POST /laudos` requer header `X-API-Key` — sem ela responde `401`. No Cloud Run a
-chave vem do **Secret Manager** (`pme-risk-api-key`, lido só pela SA da API) e
-nunca aparece em `gcloud run services describe`; o código lê a env var
-`API_KEY_SECRET` e não sabe a diferença. Sem a var (dev local), fica aberto.
+**Proteção.** A chave de analista (`X-API-Key`) vem do **Secret Manager**
+(`pme-risk-api-key`, lido só pela SA da API) e nunca aparece em
+`gcloud run services describe`; o código lê a env var `API_KEY_SECRET`. Sem a
+var (dev local), tudo fica aberto.
+
+- **Demo pública** (`ALLOW_UNAUTHENTICATED=1 CRIACAO_PUBLICA=1`): visitantes
+  criam laudos **sem chave**, dentro de dois limites diários (UTC) — por IP
+  (`LIMITE_POR_IP_DIA`, padrão 3; em memória, o IP não é gravado) e global
+  (`LIMITE_GLOBAL_DIA`, padrão 30; contado na trilha de auditoria, sobrevive a
+  reinícios). Acima deles, `429` com `Retry-After`. Com a chave, sem limite
+  (`api/limites.py`).
+- **Decidir no portão humano exige a chave sempre** (`PATCH /laudos/{id}/decisao`
+  sem ela → `401`): visitante gera laudo, não aprova.
+- **Privado** (padrão do `deploy_api.sh`): Cloud Run IAM (`Authorization:
+  Bearer $(gcloud auth print-identity-token)`) e `POST /laudos` com a chave.
 
 **Portão humano:** decisões são finais — decidir um laudo que já saiu de
 `pendente` responde `409`. Cada decisão entra na `trilha_auditoria`

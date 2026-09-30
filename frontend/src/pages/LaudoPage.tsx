@@ -16,7 +16,7 @@ import {
 import { Container } from "../components/Layout";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { Aviso, Button, ButtonLink, Card, Eyebrow, FaixaBadge, Skeleton, StatusBadge, cx } from "../components/ui";
-import { api, detalheErro, type Decisao, type Laudo } from "../lib/api";
+import { api, chaveApi, detalheErro, guardarChave, type Decisao, type Laudo } from "../lib/api";
 import { LIMITES_FAIXA, capitalizar, dataCurta, finalidade, fmtNum, moeda, rotuloFator } from "../lib/format";
 
 type Carga = { tipo: "carregando" } | { tipo: "nao-encontrado" } | { tipo: "erro"; status: number } | { tipo: "ok"; laudo: Laudo };
@@ -74,6 +74,10 @@ function Detalhe({ laudo, aoDecidir }: { laudo: Laudo; aoDecidir: () => void }) 
       <div className="mt-8 grid items-start gap-6 lg:grid-cols-[22rem_1fr]">
         <aside className="space-y-4 lg:sticky lg:top-24">
           <CartaoPd pd={modelo.pd} faixa={modelo.faixa_risco} versao={modelo.model_version} />
+          <p className="px-1 text-xs leading-relaxed text-faint">
+            Demonstração de método: o modelo foi treinado em empréstimos a pequenas empresas dos EUA (SBA 7(a)) e
+            ajustado ao risco relativo brasileiro de porte e UF (SCR.data). Não use esta PD para decidir crédito.
+          </p>
           <Card className="p-5">
             <h2 className="text-sm font-semibold">Pedido extraído</h2>
             <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4 text-sm">
@@ -332,6 +336,7 @@ const DECISOES: { valor: Decisao; rotulo: string; Icone: typeof Check; variante:
 function PortaoHumano({ laudoId, aoDecidir }: { laudoId: string; aoDecidir: () => void }) {
   const [autor, setAutor] = useState("");
   const [observacao, setObservacao] = useState("");
+  const [chave, setChave] = useState(chaveApi);
   const [confirmando, setConfirmando] = useState<Decisao | null>(null);
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -344,13 +349,18 @@ function PortaoHumano({ laudoId, aoDecidir }: { laudoId: string; aoDecidir: () =
     }
     setEnviando(true);
     setErro(null);
+    guardarChave(chave.trim());
     try {
       const r = await api.decidir(laudoId, decisao, autor.trim(), observacao.trim() || null);
       if (r.ok) {
         aoDecidir();
         return;
       }
-      setErro(detalheErro(r.erro, r.status));
+      setErro(
+        r.status === 401
+          ? "Só analistas decidem: informe uma chave de analista válida. Visitantes podem gerar laudos, não aprová-los."
+          : detalheErro(r.erro, r.status),
+      );
     } catch (e) {
       setErro(e instanceof Error ? e.message : String(e));
     }
@@ -373,7 +383,9 @@ function PortaoHumano({ laudoId, aoDecidir }: { laudoId: string; aoDecidir: () =
           </span>
           <div>
             <h2 className="text-lg font-semibold">Portão humano</h2>
-            <p className="text-sm text-muted">A decisão é final e fica registrada com autor, data e observação.</p>
+            <p className="text-sm text-muted">
+              A decisão é final e fica registrada com autor, data e observação. Só analistas com chave decidem.
+            </p>
           </div>
         </div>
 
@@ -387,6 +399,18 @@ function PortaoHumano({ laudoId, aoDecidir }: { laudoId: string; aoDecidir: () =
               placeholder="ex.: ana.souza"
               disabled={enviando}
               className="mt-1.5 h-11 w-full rounded-xl border border-line-strong bg-bg/60 px-3.5 focus:border-accent/60 focus:outline-none focus:ring-4 focus:ring-accent/10"
+            />
+          </label>
+          <label className="block text-sm sm:col-span-2">
+            <span className="font-medium">Chave de analista</span>
+            <input
+              type="password"
+              autoComplete="off"
+              value={chave}
+              onChange={(e) => setChave(e.target.value)}
+              placeholder="X-API-Key"
+              disabled={enviando}
+              className="mt-1.5 h-11 w-full rounded-xl border border-line-strong bg-bg/60 px-3.5 font-mono focus:border-accent/60 focus:outline-none focus:ring-4 focus:ring-accent/10"
             />
           </label>
           <label className="block text-sm">

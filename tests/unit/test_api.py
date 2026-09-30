@@ -33,6 +33,7 @@ class FakePipeline:
         self.laudos: dict[str, dict] = {}
         self.recusa: Recusa | None = None
         self.prazos: list[int | None] = []
+        self.pedidos_hoje = 0
 
     def gerar(self, texto: str, prazo_meses: int | None = None) -> LaudoCriado | Recusa:
         self.prazos.append(prazo_meses)
@@ -44,6 +45,9 @@ class FakePipeline:
 
     def obter(self, laudo_id: str) -> dict | None:
         return self.laudos.get(laudo_id)
+
+    def contar_pedidos_hoje(self) -> int:
+        return self.pedidos_hoje
 
     def listar(self, limite: int = 20) -> list[dict]:
         rows = sorted(self.laudos.values(), key=lambda r: r.get("criado_em") or "", reverse=True)
@@ -61,6 +65,9 @@ class FakePipeline:
 
 @pytest.fixture
 def client() -> Iterator[tuple[TestClient, FakePipeline]]:
+    from api import limites
+
+    limites.POR_IP.zerar()
     fake = FakePipeline()
     app.dependency_overrides[get_pipeline] = lambda: fake
     with TestClient(app) as test_client:
@@ -246,6 +253,66 @@ class TestApiKey:
         response, fake = client
         fake.gerar("clínica odontológica quer crédito de expansão")
         r = response.get("/laudos/id-1")
+        assert r.status_code == 200
+
+
+class TestDemoAberta:
+    """CRIACAO_PUBLICA=1: cria sem chave dentro dos limites; só analista decide."""
+
+    @pytest.fixture(autouse=True)
+    def _env(self, monkeypatch):
+        monkeypatch.setenv("API_KEY_SECRET", "s3gredo-demo")
+        monkeypatch.setenv("CRIACAO_PUBLICA", "1")
+        monkeypatch.setenv("LIMITE_POR_IP_DIA", "2")
+        monkeypatch.setenv("LIMITE_GLOBAL_DIA", "5")
+
+    def test_cria_sem_chave(self, client):
+        response, _ = client
+        assert response.post("/laudos", json=PEDIDO).status_code == 201
+
+    def test_limite_por_ip_429_com_retry_after(self, client):
+        response, _ = client
+        ip = {"X-Forwarded-For": "203.0.113.7, 10.0.0.1"}
+        assert response.post("/laudos", json=PEDIDO, headers=ip).status_code == 201
+        assert response.post("/laudos", json=PEDIDO, headers=ip).status_code == 201
+        r = response.post("/laudos", json=PEDIDO, headers=ip)
+        assert r.status_code == 429
+        assert int(r.headers["Retry-After"]) > 0
+        # outro IP ainda cabe
+        outro = {"X-Forwarded-For": "198.51.100.9"}
+        assert response.post("/laudos", json=PEDIDO, headers=outro).status_code == 201
+
+    def test_teto_global_429(self, client):
+        response, fake = client
+        fake.pedidos_hoje = 5
+        r = response.post("/laudos", json=PEDIDO)
+        assert r.status_code == 429
+        assert "limite diário" in r.json()["detail"]
+
+    def test_chave_de_analista_ignora_limites(self, client):
+        response, fake = client
+        fake.pedidos_hoje = 999
+        r = response.post("/laudos", json=PEDIDO, headers={"X-API-Key": "s3gredo-demo"})
+        assert r.status_code == 201
+
+    def test_chave_errada_e_401_nao_cai_no_limite(self, client):
+        response, _ = client
+        r = response.post("/laudos", json=PEDIDO, headers={"X-API-Key": "errada"})
+        assert r.status_code == 401
+
+    def test_decisao_sem_chave_401(self, client):
+        response, fake = client
+        fake.gerar("clínica odontológica quer crédito de expansão")
+        body = {"decisao": "aprovado", "decidido_por": "visitante"}
+        r = response.patch("/laudos/id-1/decisao", json=body)
+        assert r.status_code == 401
+        assert fake.laudos["id-1"]["status"] == "pendente"
+
+    def test_decisao_com_chave_200(self, client):
+        response, fake = client
+        fake.gerar("clínica odontológica quer crédito de expansão")
+        body = {"decisao": "aprovado", "decidido_por": "analista-1"}
+        r = response.patch("/laudos/id-1/decisao", json=body, headers={"X-API-Key": "s3gredo-demo"})
         assert r.status_code == 200
 
 
