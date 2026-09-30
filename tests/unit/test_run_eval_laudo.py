@@ -54,7 +54,7 @@ def _prever(features, project_id, dataset):
     return ResultadoPredicao(
         pd=0.0664,
         faixa_risco="medio",
-        fatores=[("anos_operacao", -0.264), ("sem_emprego_registrado", 0.08)],
+        fatores=[("log_valor_usd", -0.264), ("faixa_idade", 0.08)],
         model_version="logreg_v2",
     )
 
@@ -65,7 +65,7 @@ def _preparado() -> Preparado:
     return p
 
 
-def test_preparar_usa_golden_e_filtra_fatores_constantes():
+def test_preparar_usa_golden_e_mantem_os_fatores_do_modelo():
     p = _preparado()
     assert p.campos == {
         "porte": "EPP",
@@ -74,7 +74,8 @@ def test_preparar_usa_golden_e_filtra_fatores_constantes():
         "faturamento_anual_declarado": 1_800_000,
         "valor_solicitado": 150_000,
     }
-    assert [n for n, _ in p.resultado.fatores] == ["anos_operacao"]
+    # No v3 nenhuma feature é constante no serviço — todas vão ao laudo
+    assert [n for n, _ in p.resultado.fatores] == ["log_valor_usd", "faixa_idade"]
 
 
 def test_preparar_recusa_vira_nao_preparado():
@@ -88,7 +89,7 @@ def test_preparar_recusa_vira_nao_preparado():
 def test_bracos_julgados_e_agregados():
     p = _preparado()
     itens = {"1": p.insumos()}
-    fiel = "PD de 0.0664. EPP ⚠️, 12 anos ⚠️. `anos_operacao`: -0.264. LGPD art. 20."
+    fiel = "PD de 0.0664. EPP ⚠️, 12 anos ⚠️. `log_valor_usd`: -0.264. LGPD art. 20."
     inventado = "PD de 0.0664. EPP ✅, fatura R$ 3.000.000,00."
 
     def multi(enriquecidos, resultado, project_id=None):

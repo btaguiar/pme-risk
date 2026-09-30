@@ -1,33 +1,43 @@
 """Feature engineering para o modelo de risco pme-risk.
 
-MAPA DE FEATURES — Home Credit → PME (SPEC §3.2)
+MAPA DE FEATURES — SBA 7(a) → pedido PME (SPEC §3.2, plano do v3)
 
-Esta é uma HIPÓTESE DE TRABALHO, não um resultado de EDA. A tabela abaixo
-deve ser revisada após a análise exploratória (semana 1) e o resultado
-registrado em eval/model/results/ antes de qualquer treino ser citado
-como "final".
+O v3 troca a base de treino: crédito pessoal (Home Credit, `logreg_v2`) →
+empréstimos reais a PME (SBA 7(a) FOIA, `logreg_v3`). A decisão e os limites
+estão em docs/dados/levantamento-bases-pme-2026-09-29.md e
+docs/superpowers/plans/2026-09-29-modelo-v3-sba.md.
 
-| Campo do pedido PME          | Coluna Home Credit análoga | Nota |
-|------------------------------|----------------------------|------|
-| faturamento_anual_declarado  | AMT_INCOME_TOTAL           | proxy de capacidade de pagamento |
-| valor_solicitado             | AMT_CREDIT                 | |
-| prazo_meses                  | AMT_CREDIT / AMT_ANNUITY   | HC não tem prazo explícito em meses |
-| anos_operacao                | DAYS_EMPLOYED (convertido)  | proxy de maturidade/estabilidade |
-| (sempre 0 no serviço)        | DAYS_EMPLOYED = 365243     | sem_emprego_registrado — sentinela do HC |
-| setor                        | —                          | FORA do modelo desde v2 (ver abaixo) |
-| uf                           | REGION_RATING_CLIENT       | proxy de risco regional, não geografia |
+| Feature       | Treino (SBA 7(a))                    | Serviço (pedido)                   |
+|---------------|--------------------------------------|------------------------------------|
+| secao_cnae    | NaicsCode → seção CNAE (mapeamentos) | pedido.setor                       |
+| faixa_idade   | BusinessAge → faixa (mapeamentos)    | pedido.anos_operacao → mesma faixa |
+| log_valor_usd | ln(GrossApproval), USD               | ln(valor_solicitado / fator PPP)   |
 
-FEATURE SET v2 (04_load_features_v2.sql) — correções do v1:
-- Sentinela DAYS_EMPLOYED = 365243 (~18% das linhas) vira anos_operacao NULL
-  + flag. No v1 ela inflava days_employed_abs e invertia o sinal da atribuição.
-- days_employed_abs saiu: no serviço era anos_operacao * 365.25 (colinear).
-- occupation_type_encoded saiu: o hash de OCCUPATION_TYPE era usado como número
-  contínuo, e os setores PME caíam em códigos nunca vistos no treino — o setor
-  mudava a PD de forma arbitrária. Setor segue no laudo, não na PD.
+Três features é pouco, e é de propósito: é o que existe dos dois lados sem
+vazamento nem proxy inventado. Espera-se AUC modesta — o ganho do v3 está na
+validade da base, não na discriminação (README).
+
+FORA DO MODELO (v3):
+- prazo (TermInMonths): VAZAMENTO — prazo "quebrado" tem 33,64% de CHGOFF
+  contra 0,91% do redondo (a regra é regravada depois do problema;
+  levantamento §1). Guardado por tests/unit/test_features_v3.py.
+- faturamento: a SBA não tem; fica só no laudo (⚠️ declarado). Uma razão
+  valor/faturamento sem análogo no treino repetiria o erro do hash de setor
+  do v1.
+- porte e UF: a SBA não vê; entram como calibração pós-modelo em escala
+  logit (SCR.data, model/calibracao.py), não como feature.
+
+CONVERSÃO DE VALOR (decisão P1): o pedido é em BRL e o treino em USD. Usa o
+fator PPP do Banco Mundial — compara poder de compra; o câmbio de mercado
+faria um pedido brasileiro parecer ~2× menor. Indicador PA.NUS.PPP, Brasil,
+ano 2025 (último disponível em 2026-09-29):
+https://api.worldbank.org/v2/country/BRA/indicator/PA.NUS.PPP
 
 LIMITES HONESTOS:
-- A base de treino NÃO é de PME brasileira — é crédito pessoal.
-- O projeto demonstra o MÉTODO, não um modelo pronto para concessão real.
+- A base de treino é de PME americana com garantia federal (viés de seleção)
+  e outro ciclo macroeconômico.
+- O risco relativo brasileiro (porte, UF) entra pela calibração SCR; o nível
+  absoluto da PD NÃO é calibrado pelo SCR (definições diferentes).
 - pd (probabilidade de inadimplência) vem SEMPRE do modelo, nunca do LLM.
 
 REFERÊNCIA: PLANO §4, SPEC §3.2, BRIEF.md
@@ -35,77 +45,25 @@ REFERÊNCIA: PLANO §4, SPEC §3.2, BRIEF.md
 
 from __future__ import annotations
 
-import pandas as pd
-
 # Versão do feature set — mudar quando o mapeamento for revisado
-FEATURE_SET_VERSION = "v2_sem_sentinela"
+FEATURE_SET_VERSION = "v3_sba"
 
 # Tabela BigQuery do feature set atual (treino, eval e drift leem daqui)
-FEATURES_TABLE = "features_v2"
+FEATURES_TABLE = "features_v3"
 
-# Sentinela do Home Credit para "sem vínculo empregatício" em DAYS_EMPLOYED
-DAYS_EMPLOYED_SENTINELA = 365243
+# Fator PPP (BRL por US$ de paridade de poder de compra) — fonte no docstring
+FATOR_PPP_BRL_POR_USD = 2.55440835439356  # Banco Mundial, PA.NUS.PPP, Brasil, 2025
 
-# Features congeladas para o treino (específicas do Home Credit)
+# Features congeladas para o treino
 FEATURE_COLUMNS = [
-    "amt_income_total",
-    "amt_credit",
-    "amt_annuity",
-    "prazo_meses_estimado",
-    "anos_operacao",
-    "sem_emprego_registrado",
-    "region_rating",
+    "secao_cnae",  # STRING — seção CNAE 2.0 (21 códigos, agents/setores.py)
+    "faixa_idade",  # STRING — startup | 2_5 | 5_mais | desconhecida
+    "log_valor_usd",  # FLOAT64 — ln do valor em US$ PPP
 ]
 
-# Coluna alvo
+# Coluna alvo: CHGOFF = 1, PIF = 0 (D1 do plano)
 TARGET_COLUMN = "target"
 
-# Colunas de split
+# Split temporal (D5): treino FY2010–2013, holdout FY2014–2015
 SPLIT_COLUMN = "split"
-ID_COLUMN = "sk_id_curr"
-
-
-def _hash_deterministico(value: str) -> int:
-    """Hash determinístico para split local (MD5 — não bate com o split do SQL)."""
-    import hashlib
-
-    h = hashlib.md5(value.encode("utf-8")).hexdigest()
-    return int(h[:8], 16)
-
-
-def preparar_features(df: pd.DataFrame) -> pd.DataFrame:
-    """Transforma o DataFrame bruto do Home Credit no feature set v2 (EDA local).
-
-    Espelha 04_load_features_v2.sql, exceto o split: aqui é MD5 do ID, lá é
-    FARM_FINGERPRINT — para métricas citáveis, usar a tabela do BigQuery.
-
-    Args:
-        df: DataFrame com colunas do application_train.csv
-
-    Returns:
-        DataFrame com as features transformadas + coluna target + split
-    """
-    out = pd.DataFrame()
-    out[ID_COLUMN] = df[ID_COLUMN]
-
-    out["amt_income_total"] = df["AMT_INCOME_TOTAL"]
-    out["amt_credit"] = df["AMT_CREDIT"]
-    out["amt_annuity"] = df["AMT_ANNUITY"]
-
-    # Prazo estimado em meses (HC não tem prazo explícito)
-    out["prazo_meses_estimado"] = (df["AMT_CREDIT"] / df["AMT_ANNUITY"]).clip(upper=120)
-
-    # Anos de operação (proxy: DAYS_EMPLOYED) — sentinela vira NaN + flag
-    sentinela = df["DAYS_EMPLOYED"] == DAYS_EMPLOYED_SENTINELA
-    anos = (-df["DAYS_EMPLOYED"] / 365.25).clip(lower=0, upper=60)
-    out["anos_operacao"] = anos.mask(sentinela)
-    out["sem_emprego_registrado"] = sentinela.astype(int)
-
-    # Região (proxy de UF)
-    out["region_rating"] = df["REGION_RATING_CLIENT"]
-
-    out[TARGET_COLUMN] = df["TARGET"]
-    out[SPLIT_COLUMN] = out[ID_COLUMN].map(
-        lambda x: "train" if _hash_deterministico(str(x)) % 100 < 80 else "holdout"
-    )
-    return out
+SAFRA_COLUMN = "approval_fy"  # metadado do eval por safra; nunca entra no treino

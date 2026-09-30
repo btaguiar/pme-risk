@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import os
 import uuid
 from collections.abc import Callable
@@ -26,40 +27,33 @@ from agents.redator.redator import ResultadoRedacao, redigir
 from agents.schemas import DadosEnriquecidos, DadosExtraidos, PedidoCredito, ResultadoModelo
 from api.auditoria import TrilhaAuditoria
 from api.routes.portao_humano import PortaoHumano
+from model.features import FATOR_PPP_BRL_POR_USD
+from model.mapeamentos import faixa_idade_pedido
 from model.predict import ResultadoPredicao, prever
 
 _log = logging.getLogger(__name__)
 
-# Proxy neutro de UF → region_rating. 2 é a moda de REGION_RATING_CLIENT.
-# Sem inventar risco por UF (SPEC §3.2: "não geografia real").
-_REGION_RATING_DEFAULT = 2
-
-# Features com valor fixo no serviço (não vêm do pedido). A atribuição delas só
-# mede a distância até a média do treino — não diz nada sobre o solicitante, e o
-# Redator a narrava como fato ("ausência de registro de empregados"). Entram na
-# PD, mas não na lista de fatores do laudo.
-FEATURES_CONSTANTES_NO_SERVICO = frozenset({"sem_emprego_registrado", "region_rating"})
-
-# Prazo default quando o pedido não menciona (mesma base do clip em 01_load_features.sql)
-_PRAZO_DEFAULT_MESES = 36
+# No v3 nenhuma feature é constante no serviço: setor, idade e valor vêm do
+# pedido. O filtro permanece porque os ajustes de calibração SCR não são
+# features do modelo e o laudo só cita fatores + ajustes nomeados.
+FEATURES_CONSTANTES_NO_SERVICO = frozenset()
 
 
-def pedido_para_features(pedido: PedidoCredito) -> dict[str, float]:
-    """Mapeia PedidoCredito (PME) → vetor de features do modelo (Home Credit, v2).
+def pedido_para_features(pedido: PedidoCredito) -> dict[str, float | str]:
+    """Mapeia PedidoCredito (PME) → vetor de features do modelo v3 (SBA).
 
-    Setor não entra: sem análogo honesto no treino (model/features.py).
+    Valor em US$ PPP (fator do Banco Mundial — decisão P1 do plano; o câmbio
+    de mercado faria o pedido parecer ~2× menor). Faturamento e prazo ficam
+    fora do modelo: a SBA não tem faturamento e o prazo dela vaza o desfecho
+    (model/features.py).
     """
-    prazo = min(pedido.prazo_meses or _PRAZO_DEFAULT_MESES, 120)
-    anos = min(max(pedido.anos_operacao, 0), 60)
+    # Valor 0 (schema aceita) daria ln(0); ancora em 1 BRL — cauda extrema
+    # esquerda, sem derrubar a requisição.
+    valor_usd = max(float(pedido.valor_solicitado), 1.0) / FATOR_PPP_BRL_POR_USD
     return {
-        "amt_income_total": float(pedido.faturamento_anual_declarado),
-        "amt_credit": float(pedido.valor_solicitado),
-        "amt_annuity": float(pedido.valor_solicitado) / prazo,
-        "prazo_meses_estimado": float(prazo),
-        "anos_operacao": float(anos),
-        # PME em operação nunca está na sentinela "sem vínculo" do Home Credit
-        "sem_emprego_registrado": 0.0,
-        "region_rating": float(_REGION_RATING_DEFAULT),
+        "secao_cnae": pedido.setor,
+        "faixa_idade": faixa_idade_pedido(pedido.anos_operacao),
+        "log_valor_usd": math.log(valor_usd),
     }
 
 
@@ -148,7 +142,9 @@ class Pipeline:
         prazo que o Extrator ler no texto; fica registrado no pedido bruto.
         """
         etapas: list[dict[str, str]] = []
-        pedido_bruto = texto if prazo_meses is None else f"{texto}\n\n[Prazo solicitado: {prazo_meses} meses]"
+        pedido_bruto = (
+            texto if prazo_meses is None else f"{texto}\n\n[Prazo solicitado: {prazo_meses} meses]"
+        )
         extraidos = self._extrair_fn(texto, project_id=self.project_id)
         etapas.append({"etapa": "extrator", "timestamp": _agora()})
 

@@ -88,7 +88,8 @@ def secao_do_naics(naics: str | None) -> str | None:
 
 FAIXAS_IDADE = ("startup", "2_5", "5_mais", "desconhecida")
 
-_BUSINESS_AGE_PARA_FAIXA: dict[str, str] = {
+# Público: model/dados/carregar_mapeamentos_bq.py carrega no BigQuery
+BUSINESS_AGE_PARA_FAIXA: dict[str, str] = {
     "Startup, Loan Funds will Open Business": "startup",
     "New, Less than 1 Year old": "startup",
     "Less than 3 years old but at least 2": "2_5",
@@ -100,7 +101,7 @@ _BUSINESS_AGE_PARA_FAIXA: dict[str, str] = {
 
 def faixa_idade_sba(business_age: str | None) -> str:
     """Faixa de idade do treino; tudo fora da tabela vira `desconhecida`."""
-    return _BUSINESS_AGE_PARA_FAIXA.get((business_age or "").strip(), "desconhecida")
+    return BUSINESS_AGE_PARA_FAIXA.get((business_age or "").strip(), "desconhecida")
 
 
 def faixa_idade_pedido(anos_operacao: float) -> str:

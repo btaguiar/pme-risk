@@ -114,11 +114,11 @@ RR_uf    = inad_SCR(Micro+Pequeno, uf) / inad_SCR(Micro+Pequeno)
 - Create: `model/sql/07_load_features_v3.sql`, `model/sql/08_train_logreg_v3.sql`, `model/sql/09_train_candidate_v3.sql`
 - Modify: `model/features.py` (docstring do mapa, `FEATURE_SET_VERSION = "v3_sba"`, `FEATURES_TABLE = "features_v3"`, `FEATURE_COLUMNS`)
 
-- [ ] `features_v3`: aplica D1, D2, D4, os mapeamentos da Task 2 (via tabela de mapeamento carregada no BQ ou `CASE` gerado) e `split` por safra (D5).
-- [ ] **Teste de vazamento** (`tests/unit/test_features_v3.py`): nenhum `TermInMonths`, `ChargeOffDate`, `PaidInFullDate`, `GrossChargeOffAmount` ou `LoanStatus` em `FEATURE_COLUMNS` ou no SQL de treino.
-- [ ] Treinar `logreg_v3` (mesmos hiperparâmetros do v2) e um candidato (`BOOSTED_TREE_CLASSIFIER`; se repetir o erro 80038528, registrar e seguir só com o baseline).
-- [ ] Medir bytes do treino (cota de 1 TB).
-- [ ] Commit.
+- [x] `features_v3`: aplica D1, D2, D4, os mapeamentos da Task 2 (via tabela de mapeamento carregada no BQ ou `CASE` gerado) e `split` por safra (D5).
+- [x] **Teste de vazamento** (`tests/unit/test_features_v3.py`): nenhum `TermInMonths`, `ChargeOffDate`, `PaidInFullDate`, `GrossChargeOffAmount` ou `LoanStatus` em `FEATURE_COLUMNS` ou no SQL de treino.
+- [x] Treinar `logreg_v3` (mesmos hiperparâmetros do v2) e um candidato (`BOOSTED_TREE_CLASSIFIER`; se repetir o erro 80038528, registrar e seguir só com o baseline). **Candidato falhou com internalError 80038528 (3 tentativas, igual ao v1) — baseline segue sozinho.** Tabela: treino 112.335 (7,67% CHGOFF), holdout 63.502 (6,87%).
+- [x] Medir bytes do treino (cota de 1 TB). **36,2 MB no total** (features + treino + checagens, INFORMATION_SCHEMA.JOBS).
+- [x] Commit.
 
 ### Task 4: Eval do modelo v3
 

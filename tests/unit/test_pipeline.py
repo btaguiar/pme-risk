@@ -86,7 +86,7 @@ def _pipeline(
     def enriquecer_fn(extraidos: DadosExtraidos) -> DadosEnriquecidos:
         return DadosEnriquecidos(extraidos=extraidos, fonte_por_campo={"setor": "declarado"})
 
-    def prever_fn(features: dict[str, float], project_id: str, dataset: str):
+    def prever_fn(features: dict[str, float | str], project_id: str, dataset: str):
         from model.predict import ResultadoPredicao
 
         if features_capturadas is not None:
@@ -94,7 +94,7 @@ def _pipeline(
         return ResultadoPredicao(
             pd=0.07,
             faixa_risco="medio",
-            fatores=[("amt_credit", 0.02), ("sem_emprego_registrado", 0.08)],
+            fatores=[("log_valor_usd", 0.02), ("faixa_idade", -0.03)],
             model_version="logreg_v1",
         )
 
@@ -160,7 +160,7 @@ class TestPipelineGerar:
         assert resultado_modelo["pd"] == 0.07
         assert resultado_modelo["model_version"] == "logreg_v1"
 
-    def test_fatores_constantes_no_servico_nao_vao_ao_laudo(self):
+    def test_fatores_do_modelo_vao_ao_laudo(self):
         import json
 
         pipeline, portao, _ = _pipeline()
@@ -168,35 +168,40 @@ class TestPipelineGerar:
         assert isinstance(resultado, LaudoCriado)
         row = portao.obter(resultado.laudo_id)
         fatores = json.loads(row["resultado_modelo_json"])["fatores"]
-        assert fatores == [["amt_credit", 0.02]]
+        assert fatores == [["log_valor_usd", 0.02], ["faixa_idade", -0.03]]
 
     def test_features_derivam_do_pedido(self):
-        capturadas: list[dict[str, float]] = []
+        import math
+
+        capturadas: list[dict[str, float | str]] = []
         pipeline, _, _ = _pipeline(features_capturadas=capturadas)
         resultado = pipeline.gerar("texto")
         assert isinstance(resultado, LaudoCriado)
         feats = capturadas[0]
-        assert feats["amt_credit"] == 300_000.0
-        assert feats["amt_income_total"] == 2_000_000.0
+        assert feats["secao_cnae"] == "saude_servicos_sociais"
+        assert feats["faixa_idade"] == "5_mais"
+        assert feats["log_valor_usd"] == math.log(300_000 / 2.55440835439356)
 
     def test_prazo_do_formulario_prevalece_sobre_o_extraido(self):
         import json
 
-        capturadas: list[dict[str, float]] = []
+        capturadas: list[dict[str, float | str]] = []
         pipeline, portao, auditoria = _pipeline(features_capturadas=capturadas)
         resultado = pipeline.gerar("texto do pedido", prazo_meses=12)  # extraído: 36
         assert isinstance(resultado, LaudoCriado)
-        assert capturadas[0]["prazo_meses_estimado"] == 12.0
         row = portao.obter(resultado.laudo_id)
         assert json.loads(row["enriquecidos_json"])["extraidos"]["pedido"]["prazo_meses"] == 12
         assert "Prazo solicitado: 12 meses" in row["pedido_bruto"]
         assert "Prazo solicitado: 12 meses" in auditoria.registros[0]["pedido_bruto"]
 
     def test_sem_prazo_do_formulario_mantem_o_extraido(self):
-        capturadas: list[dict[str, float]] = []
-        pipeline, _, _ = _pipeline(features_capturadas=capturadas)
+        import json
+
+        capturadas: list[dict[str, float | str]] = []
+        pipeline, portao, _ = _pipeline(features_capturadas=capturadas)
         pipeline.gerar("texto do pedido")
-        assert capturadas[0]["prazo_meses_estimado"] == 36.0
+        row = portao.obter(list(portao.laudos)[0])
+        assert json.loads(row["enriquecidos_json"])["extraidos"]["pedido"]["prazo_meses"] == 36
 
 
 class TestPipelineDecisao:
