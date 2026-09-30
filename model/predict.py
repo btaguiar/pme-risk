@@ -97,6 +97,7 @@ def prever(
     dataset: str,
     porte: str | None = None,
     uf: str | None = None,
+    model_version: str | None = None,
 ) -> ResultadoPredicao:
     """Prediz PD + fatores para um vetor de features.
 
@@ -105,18 +106,18 @@ def prever(
         project_id: GCP project ID
         dataset: BigQuery dataset
         porte, uf: do pedido — com os dois, aplica a calibração SCR
+        model_version: força uma versão (avaliar um candidato antes de
+            promover); None = a versão em produção no registry
 
     Returns:
         ResultadoPredicao com pd (calibrada, se porte e UF), faixa_risco,
         fatores (+ ajustes da calibração) e model_version
     """
-    registry = ModelRegistry(project_id, dataset)
-    model = registry.obter_producao()
-
-    if model is None:
-        raise RuntimeError("Nenhum modelo com status='production' no registry")
-
-    model_version = model["model_version"]
+    if model_version is None:
+        model = ModelRegistry(project_id, dataset).obter_producao()
+        if model is None:
+            raise RuntimeError("Nenhum modelo com status='production' no registry")
+        model_version = model["model_version"]
     bq_model_name = _resolver_bq_model_name(model_version)
 
     client = bigquery.Client(project=project_id)

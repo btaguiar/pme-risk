@@ -149,3 +149,26 @@ def test_numero_dos_dados_publicos_do_cnpj_tem_evidencia():
     )
     assert "7,2" in sem.numeros_sem_evidencia
     assert com.numeros_sem_evidencia == []
+
+
+def test_nome_do_programa_sba_7a_nao_e_numero():
+    texto = "O modelo foi treinado em empréstimos do programa SBA 7(a), dos EUA."
+    assert extrair_numeros(texto) == []
+    # um 7 solto continua sendo afirmação numérica
+    assert [n.trecho for n in extrair_numeros("São 7 fatores.")] == ["7"]
+
+
+def test_cnpj_formatado_vale_se_bate_com_o_pedido():
+    texto = "CNPJ 12.345.678/0001-00 informado."
+    ok = julgar(texto, [], 0.1, [], {"cnpj": "12345678000100"}, "")
+    assert ok.numeros_sem_evidencia == [] and ok.afirmacoes == 1
+    errado = julgar(texto, [], 0.1, [], {"cnpj": "99999999000199"}, "")
+    assert errado.numeros_sem_evidencia == ["12.345.678/0001-00"]
+
+
+def test_valor_categorico_do_pedido_entre_crases():
+    texto = "O setor `saude_servicos_sociais` reduz o risco."
+    ok = julgar(texto, [], 0.1, [], {"setor": "saude_servicos_sociais"}, "")
+    assert ok.fatores_desconhecidos == []
+    errado = julgar(texto, [], 0.1, [], {"setor": "comercio"}, "")
+    assert errado.fatores_desconhecidos == ["saude_servicos_sociais"]

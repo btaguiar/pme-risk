@@ -17,6 +17,14 @@ a decisão do modelo de risco de forma clara, auditável e fundamentada.
    dados, com os dois valores, marcado ⚠️. Situação cadastral diferente de
    ATIVA também deve ser informada. Sem `cnpj_dados`, não mencione consulta
    de CNPJ.
+6. **Fatores e ajustes Brasil** — os fatores vêm em escala logit; cite cada um
+   pelo nome entre crases e com o valor exato de `resultado_modelo.fatores`.
+   `ajuste_porte_br` e `ajuste_uf_br` não são variáveis do modelo: são a
+   calibração pela inadimplência relativa brasileira (SCR.data, Banco Central)
+   do porte e da UF — valor positivo aumenta a PD, negativo reduz. O modelo foi
+   treinado em empréstimos a pequenas empresas dos EUA (SBA 7(a)); diga isso
+   uma vez, na análise. Não converta os valores em percentuais nem em
+   multiplicadores.
 
 ## Estrutura do laudo
 
@@ -36,11 +44,13 @@ a decisão do modelo de risco de forma clara, auditável e fundamentada.
 ## Exemplo de redação
 
 > O solicitante (⚠️ declarado) opera há 5 anos no setor de saúde.
-> O modelo de risco atribuiu PD de 15,2% (faixa: médio).
+> O modelo de risco atribuiu PD de 15,2% (faixa: alto).
 >
 > Principais fatores:
-> - `amt_credit`: +0.045 (valor solicitado elevado em relação ao faturamento)
-> - `anos_operacao`: -0.120 (tempo de operação consolidado reduz o risco)
+> - `secao_cnae`: -1.173 (o setor de saúde tem perda histórica abaixo da média)
+> - `faixa_idade`: -0.984 (negócio com 5 anos ou mais reduz o risco)
+> - `log_valor_usd`: +0.328 (valores menores concentram mais perdas no histórico)
+> - `ajuste_uf_br`: +0.679 (a inadimplência PME da UF está acima da média brasileira)
 >
 > Recomenda-se análise adicional do fluxo de caixa antes da aprovação,
 > conforme Res. CMN 4.966. O solicitante tem direito à revisão desta

@@ -172,10 +172,10 @@ RR_uf    = inad_SCR(Micro+Pequeno, uf) / inad_SCR(Micro+Pequeno)
 
 ### Task 8: Evals do laudo e documentação
 
-- [ ] Rodar de novo `eval/laudo/run_eval_laudo.py` (Redator com os novos fatores): fidedignidade e verificado × declarado, 2 rodadas.
-- [ ] README: seção do modelo com `logreg_v3.json`; nova ressalva ("PME americana, ajustada ao risco relativo brasileiro"); **o vazamento do prazo como achado**; v2 no histórico.
-- [ ] PLANO §4/§5/§6 e SPEC §3.2 atualizados; `model/features.py` com o mapa novo.
-- [ ] Commit.
+- [x] Rodar de novo `eval/laudo/run_eval_laudo.py` (Redator com os novos fatores): fidedignidade e verificado × declarado, 2 rodadas → `laudo_texto_v2.json`: fidedignidade 99.89% (multi) × 99.95% (baseline), **abaixo da meta de 100%** por números mal formatados do Redator (erro real, mantido); marcação 98.2–98.5% × 96.4–97.1%. Três lacunas do juiz corrigidas com teste (SBA 7(a), CNPJ formatado, setor entre crases); v1 rejulgado idêntico.
+- [x] README: seção do modelo com `logreg_v3.json`; nova ressalva ("PME americana, ajustada ao risco relativo brasileiro"); **o vazamento do prazo como achado**; v2 no histórico.
+- [x] PLANO §4/§5/§6 e SPEC §3.2 atualizados; `model/features.py` com o mapa novo.
+- [x] Commit.
 
 ### Task 9: Deploy
 

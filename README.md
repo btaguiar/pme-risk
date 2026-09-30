@@ -9,8 +9,8 @@ aprova ou rejeita antes do laudo final.
 
 | Fase | Status | Entrega |
 |---|---|---|
-| 1 — Modelo | ✅ Completa | LOGISTIC_REG `logreg_v2` em produção, métricas em `eval/model/results/` |
-| 2 — Laudo | ✅ Completa | Agentes, portão humano, auditoria; extração F1 0.99, fidedignidade do laudo 100%, baseline de chamada única medido |
+| 1 — Modelo | ✅ Completa (v3) | LOGISTIC_REG `logreg_v3` treinado em empréstimos reais a PME (SBA 7(a)), calibrado ao risco relativo brasileiro (SCR.data); métricas em `eval/model/results/` |
+| 2 — Laudo | ✅ Completa | Agentes, portão humano, auditoria; extração F1 0.99, fidedignidade do laudo 99.9% (v2), baseline de chamada única medido |
 | 3 — Produto | ✅ Em produção (privado) | API no Cloud Run (IAM + X-API-Key no Secret Manager), job de drift semanal; smoke pós-deploy executado |
 
 ## Arquitetura
@@ -44,23 +44,67 @@ pesquisa, explica e redige. O LLM não tem permissão para alterar a PD.
 
 Regra: só números reproduzíveis a partir de `eval/*/results/` (BRIEF.md).
 
-### Modelo — `eval/model/results/logreg_v2.json` (em produção)
+### Modelo — `eval/model/results/logreg_v3.json` (v3)
 
-| Métrica | v2 | v1 (`logreg_v1.json`, aposentado) | Observação |
+**Base:** empréstimos reais a pequenas empresas dos EUA (SBA 7(a) FOIA),
+desfecho observado (`CHGOFF` = perda × `PIF` = quitado), safras FY2010–2015,
+só empréstimo a prazo. **Validação temporal:** treino FY2010–2013 (112.335),
+holdout FY2014–2015 (63.502). Escolha das bases e alternativas descartadas:
+[`docs/dados/levantamento-bases-pme-2026-09-29.md`](docs/dados/levantamento-bases-pme-2026-09-29.md).
+
+| Métrica (holdout temporal) | v3 | FY2014 | FY2015 |
 |---|---|---|---|
-| KS | 0.1762 | 0.1767 | mesmo holdout, n=60.994 |
-| AUC | 0.6141 | 0.6156 | |
-| Brier | 0.0735 | 0.0735 | preditor constante na prevalência: **0.0744** |
-| ECE | 0.0013 | 0.0011 | calibração |
+| KS | 0.1354 | 0.1400 | 0.1342 |
+| AUC | 0.5845 | 0.5903 | 0.5799 |
+| Brier | 0.0638 | 0.0610 | 0.0662 |
+| Brier do preditor constante | 0.0640 | 0.0612 | 0.0664 |
+| ECE | 0.0071 | 0.0105 | 0.0042 |
 
-> **Por que v2 com as mesmas métricas:** o v1 tinha skew treino/serviço que o
-> holdout não mostra — a sentinela `DAYS_EMPLOYED=365243` (18% do treino) invertia
-> o sinal de "tempo de operação" nos laudos, e o setor entrava como hash usado
-> como número contínuo (PD arbitrária por setor). O v2 corrige isso
-> (`model/sql/04_load_features_v2.sql`) sem perda offline.
+**Features (3):** seção CNAE (NAICS → CNAE, `model/mapeamentos.py`), faixa de
+idade do negócio e ln do valor em US$ PPP (fator do Banco Mundial). **Depois
+do modelo**, a PD recebe o risco relativo brasileiro de porte e UF em escala
+logit (SCR.data, 12 meses; `model/calibracao.py`). Os dois ajustes aparecem
+no laudo como `ajuste_porte_br` e `ajuste_uf_br`.
+
+> **Achado — vazamento no prazo da SBA.** Prazo "redondo" (12, 24, 36…) tem
+> 0,91% de perda; prazo "quebrado" (13, 25, 35…), 33,64% — 91% das perdas.
+> O prazo é regravado depois do problema e carrega o desfecho: um modelo com
+> ele teria AUC alta e falsa. **O prazo ficou fora**, e um teste
+> (`tests/unit/test_features_v3.py`) impede que volte.
 >
-> **Ressalva:** o Brier mal supera o preditor constante (0.0735 vs 0.0744) — o
-> modelo ordena risco (KS/AUC) melhor do que estima probabilidade absoluta.
+> **Ressalvas:**
+> (1) AUC abaixo da do v2 (0.6141) — esperado: o v2 discriminava crédito
+> pessoal; três features sem vazamento discriminam pouco. O ganho do v3 é a
+> **validade da base** (PME, desfecho real), não a discriminação.
+> (2) O Brier mal supera o preditor constante (0.0638 × 0.0640) — como no v2,
+> o modelo ordena risco melhor do que estima probabilidade.
+> (3) PME americana com garantia federal (viés de seleção), outro ciclo
+> macroeconômico. O SCR calibra o **risco relativo** de porte e UF, não o
+> nível absoluto (definições diferentes de inadimplência).
+> (4) O ranking de setor SBA × SCR quase não concorda (Spearman ρ = 0.14, 20
+> seções): o efeito de setor aprendido nos EUA pode não valer no Brasil.
+> (5) A SBA não codifica 1–2 anos de idade; esses pedidos caem na faixa
+> `startup` (hipótese em `model/mapeamentos.py`).
+> (6) Faturamento não entra no modelo (a SBA não tem); fica no laudo como
+> ⚠️ declarado.
+> (7) Candidato boosted tree falhou no BQML (erro 80038528, como no v1); o
+> baseline logístico segue sozinho, como o PLANO §5 permite.
+
+<details>
+<summary>Histórico — v1/v2 (Home Credit, crédito pessoal, aposentados)</summary>
+
+| Métrica | v2 (`logreg_v2.json`) | v1 (`logreg_v1.json`) | Observação |
+|---|---|---|---|
+| KS | 0.1762 | 0.1767 | holdout aleatório, n=60.994 |
+| AUC | 0.6141 | 0.6156 | |
+| Brier | 0.0735 | 0.0735 | preditor constante: 0.0744 |
+| ECE | 0.0013 | 0.0011 | |
+
+O v2 corrigiu dois skews treino/serviço do v1 (sentinela `DAYS_EMPLOYED` e
+setor como hash contínuo). Os dois foram aposentados porque a base era de
+crédito pessoal, não de PME.
+
+</details>
 
 ### Extração — `eval/laudo/results/laudo_eval_v7.json`
 
@@ -176,19 +220,30 @@ análise de LGPD (transferência internacional, retenção, uso para treino).
 > (4) Todos raciocinam por padrão (~750–950 tokens de saída por pedido); o custo
 > do Gemini não é medido pelo eval (só o `usage` dos outros provedores).
 
-### Laudo (texto) — `eval/laudo/results/laudo_texto_v1.json`
+### Laudo (texto) — `eval/laudo/results/laudo_texto_v2.json`
 
 Multi-agente (Extrator → Pesquisador → Redator) contra o **baseline de chamada
 única** exigido pelo PLANO §5 (texto bruto + PD → laudo, mesmo modelo, regras e
-schema de saída). 38 itens em escopo × 2 rodadas por braço; a PD é a mesma nos dois.
+schema de saída), com o **modelo v3** e a calibração SCR. 62 itens em escopo × 2
+rodadas por braço; a PD é a mesma nos dois.
 
 | Métrica (PLANO §5) | Meta | Multi-agente r1 / r2 | Baseline r1 / r2 |
 |---|---|---|---|
-| **Fidedignidade** — afirmações verificáveis com evidência | 100% | **100% / 100%** (2.062) | **100% / 100%** (2.221) |
-| PD citada exatamente | — | 38/38 · 38/38 | 38/38 · 38/38 |
-| **Verificado × declarado** — marcação correta por campo no texto | 100% | 97.4% / **100%** | 94.9% / 94.9% |
+| **Fidedignidade** — afirmações verificáveis com evidência | 100% | 99.89% / 99.89% (1.847 · 1.850) | 99.95% / 99.95% (1.994 · 1.979) |
+| Laudos 100% fiéis | — | 61/62 · 61/62 | 61/62 · 61/62 |
+| PD citada exatamente | — | 62/62 · 62/62 | 62/62 · 62/62 |
+| **Verificado × declarado** — marcação correta por campo no texto | 100% | **98.15% / 98.46%** | 96.38% / 97.13% |
 | Classificação estruturada por campo (`fonte_por_campo`) | — | **100%** | 0% (texto livre) |
-| Latência da redação | — | 18.2s / 16.2s | 14.5s / 15.0s |
+| Latência da redação | — | 15.4s / 14.4s | 13.1s / 14.4s |
+
+> **Meta de 100% de fidedignidade não atingida no v2.** As afirmações sem
+> evidência são erros reais do Redator, mantidos na conta: números em formato
+> ambíguo ("R$ 2.500.000.00", misturando milhar pt-BR e decimal en — 2 por
+> rodada no multi-agente), um "5" sem fonte e uma norma citada fora de
+> `evidencias` (baseline). Três lacunas do juiz apareceram com o v3 e foram
+> corrigidas com teste, sem mudar nenhuma métrica do v1 (rejulgado idêntico):
+> o nome "SBA 7(a)" não é número; CNPJ formatado vale se os dígitos batem com
+> o pedido; o valor de setor entre crases vale se é o do pedido.
 
 **Juiz determinístico** (`eval/laudo/fidedignidade.py`, sem LLM): todo número do
 laudo precisa bater com o pedido, a PD ou os fatores (aceita arredondamento,
@@ -198,23 +253,26 @@ e em `evidencias`. Os textos ficam salvos no JSON: `--rejulgar` refaz o
 julgamento sem LLM, e cada correção do juiz foi feita contra esses textos.
 
 **Decisão do PLANO ("multi-agente só se justifica se superar o baseline"):
-multi-agente mantido.** Empatam em fidedignidade; o multi-agente vence em
+multi-agente mantido.** Praticamente empatam em fidedignidade (1–2
+afirmações por rodada de diferença); o multi-agente vence em
 verificado × declarado — a métrica do PLANO — por ter classificação estruturada
 por campo (base para o ✅ quando houver consulta de CNPJ) e marcar melhor no
 texto. Custo igual: calcular a PD exige extração estruturada em qualquer
 arquitetura, então os dois fazem 2 chamadas ao LLM por laudo.
 
 > **Ressalvas:**
-> (1) **Achado real:** em 5 dos 152 laudos o Gemini escreveu o símbolo errado no
+> (1) **Achado do v1:** em 5 dos 152 laudos o Gemini escreveu o símbolo errado no
 > lugar de ⚠️ — ☢, ‱, ‼ e **☑** (este parece "verificado" num dado declarado);
 > 1 no multi-agente, 4 no baseline. Um laudo do baseline marcou em bloco ("todos
 > ⚠️ declarados") e não campo a campo, o que conta como erro pela regra do prompt.
 > (2) O juiz só checa afirmações verificáveis mecanicamente; frases
 > qualitativas ("setor resiliente") não são avaliadas.
-> (3) A rodada foi feita com o stub de CNPJ: nenhum campo era verificado, então
-> ✅ nunca era esperado. A consulta real (abaixo) ainda não passou por este eval.
+> (3) O único CNPJ do golden set é fictício (a consulta pública responde 400):
+> nenhum campo sai verificado, então ✅ nunca é esperado neste eval.
 > (4) O item 9 do golden set é recusado pelo Extrator e não chega ao Redator
-> (38 de 39); o baseline não tem caminho de recusa e não foi testado fora de escopo.
+> (62 de 63); o baseline não tem caminho de recusa e não foi testado fora de escopo.
+> (5) Histórico: o v1 (`laudo_texto_v1.json`, modelo v2, 38 itens) teve 100% de
+> fidedignidade nos dois braços e marcação 97.4%/100% × 94.9%/94.9%.
 
 > **Ressalva:** o salto de F1 (0.84 → 0.95) veio de adicionar exemplos de
 > mapeamento `setor→snake_case` no prompt do Extrator. Alguns exemplos são
@@ -248,10 +306,13 @@ Faturamento, valor, prazo e finalidade são sempre declarados.
 
 ## Limites honestos
 
-- A base de treino (Home Credit) **não é de PME brasileira** — é crédito pessoal
-- O projeto demonstra o **método** (treino, calibração, monitoramento, governança)
-- `pd` vem SEMPRE do modelo, nunca do LLM
-- O mapeamento de features Home Credit → PME é hipótese documentada em `model/features.py`
+- A base de treino é de **PME americana** (SBA 7(a)), ajustada ao risco relativo
+  brasileiro de porte e UF (SCR.data) — não é crédito PME brasileiro por operação,
+  que não existe em base pública (sigilo bancário, LC 105/2001)
+- O projeto demonstra o **método** (treino, calibração, monitoramento, governança),
+  não um modelo pronto para concessão real
+- `pd` vem SEMPRE do modelo (e da calibração determinística), nunca do LLM
+- Mapeamentos NAICS → CNAE e faixas de idade documentados em `model/mapeamentos.py`
 
 ## API (produto)
 
@@ -304,9 +365,12 @@ não há endpoint de HTML/PDF nesta fase.
 
 ## Monitoramento (drift)
 
-`monitoring/drift_job.py` compara as features numéricas dos últimos laudos
-contra a distribuição de treino (PSI por quantis). Acima de 0.25 → log
-`WARNING` (log-based alert do free tier).
+`monitoring/drift_job.py` compara os últimos laudos com **pedidos PME
+brasileiros** — operações do BNDES (indiretas automáticas, MICRO/PEQUENA,
+2018–2022, sem cooperativas de crédito; só o agregado é gravado). Valor e prazo
+por decis do porte, setor por PSI categórico. Comparar com o treino (SBA,
+americano) dispararia sempre. Acima de 0.25 → log `WARNING` (log-based alert
+do free tier).
 
 ```bash
 # Local (requer ADC + GCP_PROJECT_ID)
@@ -316,8 +380,9 @@ uv run python -m monitoring.drift_job
 No Cloud Run, roda como Job disparado por Cloud Scheduler semanal
 (`infra/scripts/deploy_drift.sh`). Com menos de 100 laudos por feature o
 PSI não é calculado (`amostra_insuficiente`): com n pequeno ele mede ruído
-(n=30 → 68% de falso alarme em simulação; n=100 → 1%). Categóricas (porte, UF, setor) ficam de
-fora: sem análogo honesto no Home Credit (limite documentado).
+(n=30 → 68% de falso alarme em simulação; n=100 → 1%). Limites: valores do
+BNDES são nominais de 2018–2022, e o crédito BNDES é direcionado/subsidiado;
+porte e UF não entram no drift (o risco relativo deles vem do SCR).
 
 ## Deploy (passo manual)
 

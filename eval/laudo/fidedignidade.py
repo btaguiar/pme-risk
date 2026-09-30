@@ -51,6 +51,10 @@ _NUMERO = re.compile(
 # Enumerador de lista ou título numerado ("1. ", "## 2. Dados", "**3. Análise**")
 _ENUMERADOR = re.compile(r"^[\s#*>_-]*\d+[.)]\s", re.M)
 _CRASE = re.compile(r"`([a-z_][a-z0-9_]*)`")
+# Nomes próprios com dígito que não são afirmação numérica: o programa da base
+# de treino do v3 ("SBA 7(a)", citado por instrução do prompt do Redator)
+_CNPJ_FORMATADO = re.compile(r"\b\d{2}\.\d{3}\.\d{3}/\d{4}-\d{2}\b")
+_NOMES_COM_NUMERO = re.compile(r"\bSBA\s*7\s*\(a\)", re.I)
 
 _ESCALA = {"mil": 1e3, "k": 1e3, "mi": 1e6, "m": 1e6, "b": 1e9}
 
@@ -112,8 +116,8 @@ class NumeroNoTexto:
 
 
 def extrair_numeros(texto: str) -> list[NumeroNoTexto]:
-    """Números do texto, sem enumeradores de lista e sem números de normas."""
-    limpo = _ENUMERADOR.sub(" ", texto)
+    """Números do texto, sem enumeradores, números de normas e nomes como SBA 7(a)."""
+    limpo = _NOMES_COM_NUMERO.sub(" ", _ENUMERADOR.sub(" ", texto))
     for padrao, _ in _PADROES_NORMA:
         limpo = padrao.sub(" ", limpo)
     numeros = []
@@ -236,7 +240,18 @@ def julgar(
         for v in (cnpj_dados or {}).values()
         if isinstance(v, int | float) and not isinstance(v, bool)
     }
-    for n in extrair_numeros(texto):
+    # CNPJ formatado (12.345.678/0001-00) é um identificador, não três números:
+    # vale se os dígitos batem com o CNPJ do pedido ou da consulta pública
+    cnpjs_fonte = {
+        re.sub(r"\D", "", str(c)) for c in (campos.get("cnpj"), (cnpj_dados or {}).get("cnpj")) if c
+    }
+    for m in _CNPJ_FORMATADO.finditer(texto):
+        j.afirmacoes += 1
+        if re.sub(r"\D", "", m.group(0)) in cnpjs_fonte:
+            j.com_evidencia += 1
+        else:
+            j.numeros_sem_evidencia.append(m.group(0))
+    for n in extrair_numeros(_CNPJ_FORMATADO.sub(" ", texto)):
         j.afirmacoes += 1
         if tem_evidencia(n, evid):
             j.com_evidencia += 1
@@ -252,7 +267,18 @@ def julgar(
     # faixa errada entre crases continua sendo acusada)
     from model.predict import classificar_faixa_risco
 
-    nomes_validos = {nome for nome, _ in fatores} | set(campos) | {classificar_faixa_risco(pd)}
+    # Valores categóricos do pedido também são citáveis (o fator `secao_cnae`
+    # convida a citar o setor, ex. `saude_servicos_sociais`) — só se iguais ao
+    # pedido ou à consulta pública
+    valores_citaveis = {v for v in campos.values() if isinstance(v, str)}
+    valores_citaveis |= {x for v in campos.values() if isinstance(v, list) for x in v}
+    valores_citaveis |= {v for v in (cnpj_dados or {}).values() if isinstance(v, str)}
+    nomes_validos = (
+        {nome for nome, _ in fatores}
+        | set(campos)
+        | valores_citaveis
+        | {classificar_faixa_risco(pd)}
+    )
     for nome in _CRASE.findall(texto):
         j.afirmacoes += 1
         if nome in nomes_validos:

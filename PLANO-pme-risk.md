@@ -116,8 +116,9 @@ que o recrutador busca:
 
 | Uso | Fonte | Observação |
 |---|---|---|
-| Treinar o modelo de risco | Base pública rotulada (Home Credit; alternativas: German Credit, Taiwan Default) | Rótulos reais de inadimplência — não sintéticos |
-| Contexto Brasil | BCB — SCR.data (inadimplência por porte, setor, UF) | Prior / sanity check do modelo para PME brasileira |
+| Treinar o modelo de risco | **SBA 7(a) FOIA** (v3, 2026-09-29) — empréstimos reais a PME dos EUA com desfecho; v1/v2 usaram Home Credit (crédito pessoal), aposentados | Rótulos reais de inadimplência — não sintéticos. Levantamento: `docs/dados/levantamento-bases-pme-2026-09-29.md` |
+| Contexto Brasil | BCB — SCR.data (inadimplência por porte, setor, UF) | Calibração do risco relativo de porte e UF (v3); sanidade do ranking de setor |
+| Pedido PME brasileiro | BNDES — operações indiretas automáticas (só agregado) | Referência de drift de valor, prazo e setor (v3) |
 | Dados da empresa | CNPJ público (Receita), via BrasilAPI (§3) | Idade, CNAE, porte, UF, situação cadastral |
 | Normas citáveis | LGPD art. 20; Res. CMN 4.966; política de crédito fictícia escrita para o projeto | Conferir texto vigente antes de citar |
 | Extração e recusa | Golden set sintético de ~50 pedidos pt-BR | Setores, portes, regiões, pedidos ambíguos e fora de escopo |
@@ -147,9 +148,11 @@ não um modelo pronto para concessão real.
 > - ✅ **Fidedignidade** e **Verificado vs. declarado** → implementados em
 >   2026-09-28 pela opção (b): juiz determinístico que parseia o texto do laudo
 >   (`eval/laudo/fidedignidade.py`, runner `eval/laudo/run_eval_laudo.py`).
->   Fidedignidade 100% nos dois braços; marcação por campo 97.4–100%
->   (multi-agente) × 94.9% (baseline). Resultados em
->   `eval/laudo/results/laudo_texto_v1.json`; ressalvas no README.
+>   v1 (modelo v2): fidedignidade 100% nos dois braços; marcação 97.4–100%
+>   (multi-agente) × 94.9% (baseline) — `laudo_texto_v1.json`.
+>   **v2 (modelo v3, 62 itens, 2026-09-29):** fidedignidade 99.89% (multi) ×
+>   99.95% (baseline) — abaixo da meta de 100%, por números mal formatados do
+>   Redator; marcação 98.2–98.5% × 96.4–97.1% — `laudo_texto_v2.json`.
 
 **Baselines obrigatórios:**
 - **Modelo:** regressão logística simples. Modelo mais complexo só entra se
@@ -165,16 +168,20 @@ não um modelo pronto para concessão real.
 
 ### Resultados (2026-09-28)
 
-**Modelo — `eval/model/results/logreg_v2.json`** (em produção; v1 aposentado por
-skew treino/serviço — ver README):
+**Modelo — `eval/model/results/logreg_v3.json`** (SBA 7(a), holdout temporal
+FY2014–2015, calibração SCR; v2 aposentado — base de crédito pessoal):
 
 | Métrica | Valor | Meta | Status |
 |---|---|---|---|
-| KS | 0.1762 | — | baseline |
-| AUC | 0.6141 | — | baseline |
-| Brier | 0.0735 | < ingênuo (0.0744) | ⚠️ margem mínima |
-| ECE | 0.0013 | — | baseline |
-| Holdout | 60.994 amostras | — | — |
+| KS | 0.1354 | — | baseline |
+| AUC | 0.5845 | — | baseline (v2: 0.6141, outra base) |
+| Brier | 0.0638 | < ingênuo (0.0640) | ⚠️ margem mínima |
+| ECE | 0.0071 | — | baseline |
+| Holdout | 63.502 amostras | — | por safra estável (2014/2015) |
+
+> Achado: o prazo da SBA vaza o desfecho (0,91% × 33,64% de perda entre prazo
+> redondo e quebrado) — fora das features, guardado por teste. Plano:
+> `docs/superpowers/plans/2026-09-29-modelo-v3-sba.md`.
 
 **Extração — `eval/laudo/results/laudo_eval_v7.json`** (método v5 + setor CNAE +
 finalidade fechada; golden set de 80 itens, ver README):
@@ -209,7 +216,7 @@ finalidade fechada; golden set de 80 itens, ver README):
 
 | Fase | Prazo | Entrega | Critério de pronto | Status |
 |---|---|---|---|---|
-| **1 — Modelo** | 3 semanas | Treino no BigQuery ML, baseline logístico, KS/AUC/Brier, versionamento | Métricas do modelo em `eval/`; funciona sozinho | ✅ Completa |
+| **1 — Modelo** | 3 semanas | Treino no BigQuery ML, baseline logístico, KS/AUC/Brier, versionamento | Métricas do modelo em `eval/`; funciona sozinho | ✅ Completa — v3 (SBA 7(a) + SCR + BNDES) em 2026-09-29 |
 | **2 — Laudo** | 4 semanas | Extrator + Pesquisador + Redator + portão humano + trilha de auditoria; golden set; baseline de chamada única | Multi-agente supera o baseline (ou decisão registrada) | ✅ Completa — baseline medido, decisão registrada |
 | **3 — Produto** | 3 semanas | Deploy em Cloud Run, job de drift, laudo navegável, README | Demo pública; post LinkedIn com números do eval | 🔧 Código completo; checklist de aceite executado (Docker local, smoke 401/404/201, e2e real, drift, budget); IAM preparada (SA + papéis BQ); falta o deploy |
 

@@ -104,3 +104,12 @@ def test_contrato_servico_igual_ao_treino():
     features = pedido_para_features(pedido)
     assert list(features) == FEATURE_COLUMNS
     assert list(predict._FEATURE_TYPES) == FEATURE_COLUMNS
+
+
+def test_model_version_explicita_nao_consulta_o_registry(monkeypatch):
+    def nao_chamar(self):
+        raise AssertionError("não deveria ler o registry")
+
+    monkeypatch.setattr(_Registry, "obter_producao", nao_chamar)
+    r = predict.prever(_FEATURES, "proj", "ds", model_version="logreg_v3")
+    assert r.model_version == "logreg_v3"

@@ -133,6 +133,13 @@ Pydantic em `agents/schemas.py`, usado tanto pelo Extrator quanto pela API:
 
 ### 3.2 Decisão em aberto: mapeamento de features Home Credit → PME
 
+> **Resolvido no v3 (2026-09-29):** a base de treino passou a ser SBA 7(a)
+> (empréstimos reais a PME, com desfecho), com features seção CNAE, faixa de
+> idade e valor em US$ PPP, e calibração SCR de porte e UF. Mapa atual em
+> `model/features.py` e `model/mapeamentos.py`; decisão em
+> `docs/superpowers/plans/2026-09-29-modelo-v3-sba.md`. O texto abaixo é o
+> histórico do v1/v2.
+
 O Home Credit Default Risk (dados de crédito pessoal: renda do solicitante,
 tempo de emprego, tipo de contrato, histórico em bureau) não tem
 correspondência direta com os campos acima (dados de **empresa**, não de
@@ -347,9 +354,9 @@ de log-based alert do Cloud Monitoring free tier cobre isso.
   documentado como hipótese em `model/features.py`; validação completa
   requer EDA adicional
 - ~~Terraform vs. scripts `gcloud` (§2)~~ — ✅ scripts `gcloud` (decidido)
-- **EDA do mapeamento Home Credit → PME (§3.2)** — pendente. O mapeamento
-  é hipótese documentada. Uma EDA rápida validando (ou ajustando) fortalece
-  a credibilidade do AUC/KS no README. Não bloqueia.
+- ~~EDA do mapeamento Home Credit → PME (§3.2)~~ — ✅ superado no v3: a
+  base passou a ser SBA 7(a), e o levantamento das bases está em
+  `docs/dados/levantamento-bases-pme-2026-09-29.md`.
 - **Boosted tree candidato** — erro BQML 80038528 não investigado. Decisão
   de ficar no baseline é válida (regra: empate = baseline). Para comparação
   de modelos no currículo, investigar erro e tentar com hiperparâmetros

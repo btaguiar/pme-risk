@@ -25,6 +25,7 @@ import time
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from functools import partial
 from pathlib import Path
 
 from agents.schemas import DadosEnriquecidos, ResultadoModelo
@@ -35,6 +36,8 @@ GOLDEN_PATH = Path(__file__).parent.parent.parent / "data" / "golden_set" / "ped
 
 # Campos de referência com valor literal no texto (rótulos normalizados ficam de fora)
 CAMPOS_REFERENCIA = (
+    "setor",  # citável entre crases (fator secao_cnae); lista = qualquer seção aceita
+    "cnpj",  # citável formatado (12.345.678/0001-00)
     "porte",
     "uf",
     "anos_operacao",
@@ -104,15 +107,26 @@ def preparar(
         )
     except Exception as e:
         return {"indice": indice, "motivo": f"{type(e).__name__}: {e}"[:300]}
-    esperado = item["esperado"]
-    campos = {
-        c: esperado.get(c)
-        for c in CAMPOS_REFERENCIA
-        if esperado.get(c) is not None and not isinstance(esperado.get(c), list)
-    }
     return Preparado(
-        indice, item["texto_pt_br"], campos, enriquecidos, montar_resultado_modelo(predicao)
+        indice,
+        item["texto_pt_br"],
+        campos_referencia(item["esperado"]),
+        enriquecidos,
+        montar_resultado_modelo(predicao),
     )
+
+
+def campos_referencia(esperado: dict) -> dict[str, object]:
+    """Valores de referência do golden set para o juiz.
+
+    Lista só para `setor` (a própria CNAE admite duas seções); nos demais
+    campos, lista não é valor único e fica de fora.
+    """
+    return {
+        c: esperado[c]
+        for c in CAMPOS_REFERENCIA
+        if esperado.get(c) is not None and (c == "setor" or not isinstance(esperado[c], list))
+    }
 
 
 def redigir(braco: str, p: Preparado, redigir_fn: Callable, project_id: str) -> dict:
@@ -192,7 +206,14 @@ def agregar(braco: str, laudos: list[dict], itens: dict[str, dict]) -> dict:
 
 
 def julgar_saida(saida: dict) -> dict:
-    """(Re)calcula as métricas de todas as rodadas a partir dos laudos salvos."""
+    """(Re)calcula as métricas de todas as rodadas a partir dos laudos salvos.
+
+    A referência (`campos`) é recalculada do golden set pelo índice — é
+    determinística, e assim JSONs antigos usam os mesmos CAMPOS_REFERENCIA.
+    """
+    golden = dict(carregar_em_escopo())
+    for indice, insumos in saida["itens"].items():
+        insumos["campos"] = campos_referencia(golden[int(indice)]["esperado"])
     saida["metricas"] = {
         rodada: {braco: agregar(braco, laudos, saida["itens"]) for braco, laudos in bracos.items()}
         for rodada, bracos in saida["laudos"].items()
@@ -200,12 +221,22 @@ def julgar_saida(saida: dict) -> dict:
     return saida
 
 
-def gerar(project_id: str, dataset: str, rodadas: int, max_itens: int | None, workers: int) -> dict:
+def gerar(
+    project_id: str,
+    dataset: str,
+    rodadas: int,
+    max_itens: int | None,
+    workers: int,
+    model_version: str | None = None,
+) -> dict:
     from agents.extractor.extractor import extrair
     from agents.pesquisador.pesquisador import enriquecer
     from agents.redator.redator import redigir as redigir_multi
     from eval.laudo.baseline_chamada_unica import redigir_baseline
     from model.predict import prever
+
+    if model_version:  # candidato ainda não promovido no registry
+        prever = partial(prever, model_version=model_version)
 
     itens = carregar_em_escopo()[:max_itens] if max_itens else carregar_em_escopo()
     with ThreadPoolExecutor(workers) as pool:
@@ -227,6 +258,7 @@ def gerar(project_id: str, dataset: str, rodadas: int, max_itens: int | None, wo
                 )
     return {
         "juiz": "determinístico (eval/laudo/fidedignidade.py)",
+        "model_version": model_version or "produção (registry)",
         "n_itens_em_escopo": len(itens),
         "n_preparados": len(preparados),
         "nao_preparados": [p for p in prep if not isinstance(p, Preparado)],
@@ -242,6 +274,9 @@ def main() -> None:
     parser.add_argument("--max-itens", type=int, default=None, help="rodada parcial")
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--rejulgar", type=Path, default=None, help="JSON salvo; só o juiz")
+    parser.add_argument(
+        "--model-version", default=None, help="avalia um candidato antes de promover"
+    )
     args = parser.parse_args()
 
     if args.rejulgar:
@@ -254,6 +289,7 @@ def main() -> None:
             rodadas=args.rodadas,
             max_itens=args.max_itens,
             workers=args.workers,
+            model_version=args.model_version,
         )
         saida["parcial"] = args.max_itens is not None
         nome = f"{args.nome}_parcial" if args.max_itens else args.nome

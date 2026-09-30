@@ -68,6 +68,8 @@ def _preparado() -> Preparado:
 def test_preparar_usa_golden_e_mantem_os_fatores_do_modelo():
     p = _preparado()
     assert p.campos == {
+        # lista de setor entra (qualquer seção citada entre crases é aceita)
+        "setor": ["industria_transformacao", "comercio"],
         "porte": "EPP",
         "uf": "MG",
         "anos_operacao": 12,
