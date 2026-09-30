@@ -1,5 +1,7 @@
 # pme-risk — Laudo de risco de crédito PME
 
+**Demo:** https://pme-risk-demo.web.app
+
 Sistema de análise de risco de crédito para PMEs brasileiras. Um modelo
 treinado em BigQuery ML calcula a probabilidade de inadimplência (PD);
 agentes LLM extraem, pesquisam e explicam a decisão; um portão humano
@@ -416,7 +418,16 @@ smoke 401/404/201 e integração e2e contra GCP real). O deploy exige:
 export GCP_PROJECT_ID=... RUN_SERVICE_ACCOUNT=... API_KEY_SECRET=...
 bash infra/scripts/deploy_api.sh     # API no Cloud Run, privada (ALLOW_UNAUTHENTICATED=1 p/ demo pública)
 bash infra/scripts/deploy_drift.sh   # Job de drift + Scheduler semanal
+bash infra/scripts/deploy_hosting.sh # Firebase Hosting na frente do Cloud Run
 ```
+
+**Endereço público:** https://pme-risk-demo.web.app — Firebase Hosting repassa
+todas as rotas para o Cloud Run (`firebase.json`), então frontend, assets e API
+vêm da mesma imagem. O site tem nome próprio porque o site padrão do Firebase
+usa o ID do projeto no endereço; pelo mesmo motivo não há `.firebaserc`
+versionado (o projeto vem de `GCP_PROJECT_ID`). Limite: o rewrite do Hosting
+para o Cloud Run corta em 60 s — um laudo leva ~20–30 s, mas retries do Gemini
+com backoff podem passar disso.
 
 **Rotação da chave:** troque `API_KEY_SECRET` e rode `deploy_api.sh` — ele adiciona
 a versão e publica uma revisão nova. Desative a versão antiga em seguida

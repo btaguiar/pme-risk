@@ -42,6 +42,7 @@ Thumbs.db
 *.json
 !data/schemas/*.json
 !eval/*/results/*.json
+!firebase.json
 !frontend/package.json
 !frontend/package-lock.json
 !frontend/tsconfig.json
@@ -55,3 +56,8 @@ infra/scripts/secret_patterns.local
 frontend/node_modules/
 frontend/dist/
 frontend/*.tsbuildinfo
+
+# Firebase — .firebaserc teria o ID do projeto (vem de GCP_PROJECT_ID no deploy)
+.firebaserc
+.firebase/
+firebase-debug.log

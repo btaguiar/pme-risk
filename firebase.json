@@ -1,0 +1,16 @@
+{
+  "hosting": {
+    "site": "pme-risk-demo",
+    "public": "infra/firebase/public",
+    "ignore": ["**/.*"],
+    "rewrites": [
+      {
+        "source": "**",
+        "run": {
+          "serviceId": "pme-risk-api",
+          "region": "us-central1"
+        }
+      }
+    ]
+  }
+}
