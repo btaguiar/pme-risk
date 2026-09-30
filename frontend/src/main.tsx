@@ -6,11 +6,12 @@ import "./index.css";
 import { Layout } from "./components/Layout";
 import { Landing } from "./pages/Landing";
 import { NovoPedido } from "./pages/NovoPedido";
-import { LaudoPage } from "./pages/LaudoPage";
 import { NaoEncontrada } from "./pages/NaoEncontrada";
 
 // recharts é ~⅔ do bundle — só carrega quando o painel abre.
 const Dashboard = lazy(() => import("./pages/Dashboard").then((m) => ({ default: m.Dashboard })));
+// react-markdown (texto do laudo) só carrega quando um laudo abre.
+const LaudoPage = lazy(() => import("./pages/LaudoPage").then((m) => ({ default: m.LaudoPage })));
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -21,7 +22,7 @@ createRoot(document.getElementById("root")!).render(
             <Route index element={<Landing />} />
             <Route path="novo" element={<NovoPedido />} />
             <Route path="laudos" element={<Suspense><Dashboard /></Suspense>} />
-            <Route path="laudos/:id" element={<LaudoPage />} />
+            <Route path="laudos/:id" element={<Suspense><LaudoPage /></Suspense>} />
             <Route path="*" element={<NaoEncontrada />} />
           </Route>
         </Routes>

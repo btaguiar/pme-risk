@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Container } from "../components/Layout";
 import { AnimatedNumber } from "../components/AnimatedNumber";
+import { TextoLaudo } from "../components/TextoLaudo";
 import { Aviso, Button, ButtonLink, Card, Eyebrow, FaixaBadge, Skeleton, StatusBadge, cx } from "../components/ui";
 import { api, chaveApi, detalheErro, guardarChave, type Decisao, type Laudo } from "../lib/api";
 import { LIMITES_FAIXA, capitalizar, dataCurta, finalidade, fmtNum, moeda, rotuloFator } from "../lib/format";
@@ -99,9 +100,7 @@ function Detalhe({ laudo, aoDecidir }: { laudo: Laudo; aoDecidir: () => void }) 
 
         <div className="min-w-0 space-y-6">
           <Secao Icone={FileText} titulo="Laudo de risco">
-            <div className="max-w-[72ch] text-[15px] leading-[1.75] whitespace-pre-wrap text-ink/90">
-              {laudo.texto || <span className="text-muted">Sem texto.</span>}
-            </div>
+            {laudo.texto ? <TextoLaudo texto={laudo.texto} /> : <p className="text-sm text-muted">Sem texto.</p>}
           </Secao>
 
           <Secao Icone={Link2} titulo="Evidências" contador={laudo.evidencias?.length}>
