@@ -3,6 +3,11 @@
 Lê predições reais do BQML sobre o holdout e grava em eval/model/results/.
 Referência: SPEC §3.4, PLANO §5
 Regra: só citar métricas que estejam em eval/model/results/*.json (BRIEF.md)
+
+v3 (SBA 7(a)): holdout TEMPORAL FY2014–2015 (D5), métricas também por safra
+(2014 × 2015) e sanidade de setor — Spearman entre a perda por seção CNAE na
+SBA e a inadimplência Micro+Pequeno por seção no SCR (checagem, sem limite
+de aceite; precisa de `scr_pj_raw`, Task 5).
 """
 
 from __future__ import annotations
@@ -77,31 +82,94 @@ def calcular_ece(y_true: list[int], y_score: list[float], n_bins: int = 10) -> f
     return ece
 
 
+def _metricas(y_true: list[int], y_score: list[float]) -> dict:
+    """Métricas padrão arredondadas."""
+    return {
+        "n_amostras": len(y_true),
+        "prevalencia": round(sum(y_true) / len(y_true), 4) if y_true else None,
+        "ks": round(calcular_ks(y_true, y_score), 4),
+        "auc": round(calcular_auc(y_true, y_score), 4),
+        "brier": round(calcular_brier(y_true, y_score), 4),
+        "brier_ingenuo": round(calcular_brier_ingenuo(y_true), 4),
+        "ece": round(calcular_ece(y_true, y_score), 4),
+    }
+
+
 def obter_predicoes(
     project_id: str,
     dataset: str,
     bq_model_name: str,
-) -> tuple[list[int], list[float]]:
-    """Executa ML.PREDICT sobre o holdout e retorna (y_true, y_score)."""
+    *,
+    features_table: str = FEATURES_TABLE,
+    feature_columns: list[str] | None = None,
+    com_safra: bool = True,
+) -> list[dict]:
+    """Executa ML.PREDICT sobre o holdout e retorna linhas com target, pd e safra.
+
+    `com_safra=False` para tabelas sem approval_fy (features/features_v2).
+    """
+    colunas = feature_columns or FEATURE_COLUMNS
+    col_safra = "approval_fy AS safra," if com_safra else "NULL AS safra,"
     client = bigquery.Client(project=project_id)
 
     query = f"""
         SELECT
           target,
+          {col_safra}
           (SELECT CAST(prob AS FLOAT64) FROM UNNEST(predicted_target_probs) WHERE label = 1) AS pd
         FROM ML.PREDICT(
           MODEL `{project_id}.{dataset}.{bq_model_name}`,
           (
-            SELECT {", ".join(FEATURE_COLUMNS)}, target
-            FROM `{project_id}.{dataset}.{FEATURES_TABLE}`
+            SELECT {", ".join(colunas)}, target{" , approval_fy" if com_safra else ""}
+            FROM `{project_id}.{dataset}.{features_table}`
             WHERE split = 'holdout'
           )
         )
     """
     rows = list(client.query(query).result())
-    y_true = [int(r["target"]) for r in rows]
-    y_score = [float(r["pd"]) for r in rows]
-    return y_true, y_score
+    return [
+        {
+            "target": int(r["target"]),
+            "safra": int(r["safra"]) if r["safra"] is not None else None,
+            "pd": float(r["pd"]),
+        }
+        for r in rows
+    ]
+
+
+def sanidade_setor(project_id: str, dataset: str) -> dict | None:
+    """Spearman entre a perda por seção CNAE na SBA e a inadimplência Micro+Pequeno
+    por seção no SCR (se `scr_pj_raw` ainda não existir, devolve None).
+
+    Checagem de sanidade do mapeamento NAICS→CNAE (plano D7), não meta.
+    """
+    client = bigquery.Client(project=project_id)
+    try:
+        sba = {
+            r["secao_cnae"]: float(r["tx_perda"])
+            for r in client.query(
+                f"SELECT secao_cnae, AVG(target) AS tx_perda "
+                f"FROM `{project_id}.{dataset}.features_v3` GROUP BY secao_cnae"
+            ).result()
+        }
+        scr = {
+            r["secao"]: float(r["tx_inad"])
+            for r in client.query(
+                f"""SELECT secao, SUM(carteira_inadimplencia) / SUM(carteira_ativa) AS tx_inad
+                    FROM `{project_id}.{dataset}.scr_pj_raw`
+                    WHERE porte IN ('Micro', 'Pequeno')
+                      AND cliente = 'PJ'
+                    GROUP BY secao"""
+            ).result()
+        }
+    except Exception:
+        return None
+
+    comuns = sorted(set(sba) & set(scr))
+    if len(comuns) < 3:
+        return None
+    rho, _ = stats.spearmanr([sba[s] for s in comuns], [scr[s] for s in comuns])
+    return {"rho": round(float(rho), 4), "n_secoes": len(comuns)}
 
 
 def avaliar_modelo(
@@ -110,38 +178,86 @@ def avaliar_modelo(
     bq_model_name: str,
     model_version: str,
     algoritmo: str,
+    *,
+    feature_set_version: str = FEATURE_SET_VERSION,
+    features_table: str = FEATURES_TABLE,
+    feature_columns: list[str] | None = None,
+    por_safra: bool = False,
+    nota: str | None = None,
 ) -> dict:
     """Calcula métricas sobre holdout real e grava em eval/model/results/."""
-    y_true, y_score = obter_predicoes(project_id, dataset, bq_model_name)
+    linhas = obter_predicoes(
+        project_id,
+        dataset,
+        bq_model_name,
+        features_table=features_table,
+        feature_columns=feature_columns,
+    )
+    y_true = [row["target"] for row in linhas]
+    y_score = [row["pd"] for row in linhas]
 
     metrics = {
         "model_version": model_version,
         "algoritmo": algoritmo,
-        "feature_set_version": FEATURE_SET_VERSION,
-        "n_amostras": len(y_true),
-        "ks": round(calcular_ks(y_true, y_score), 4),
-        "auc": round(calcular_auc(y_true, y_score), 4),
-        "brier": round(calcular_brier(y_true, y_score), 4),
-        "brier_ingenuo": round(calcular_brier_ingenuo(y_true), 4),
-        "ece": round(calcular_ece(y_true, y_score), 4),
+        "feature_set_version": feature_set_version,
+        **_metricas(y_true, y_score),
     }
+
+    if por_safra:
+        safras = sorted({row["safra"] for row in linhas})
+        metrics["por_safra"] = {
+            str(safra): _metricas(
+                [row["target"] for row in linhas if row["safra"] == safra],
+                [row["pd"] for row in linhas if row["safra"] == safra],
+            )
+            for safra in safras
+        }
+
+    sanidade = sanidade_setor(project_id, dataset)
+    if sanidade is not None:
+        metrics["sanidade_setor_sba_x_scr"] = sanidade
+
+    if nota:
+        metrics["nota"] = nota
 
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     output_path = RESULTS_DIR / f"{model_version}.json"
     with open(output_path, "w", encoding="utf-8") as f:
-        json.dump(metrics, f, indent=2)
+        json.dump(metrics, f, indent=2, ensure_ascii=False)
 
     return metrics
 
 
 if __name__ == "__main__":
+    import argparse
     import os
+
+    parser = argparse.ArgumentParser(description="Avalia um modelo no holdout e grava o JSON")
+    parser.add_argument(
+        "--model", default="logreg_v3", help="versão (nome do JSON e do modelo BQML)"
+    )
+    parser.add_argument("--table", default=FEATURES_TABLE, help="tabela de features do holdout")
+    parser.add_argument(
+        "--colunas",
+        default=",".join(FEATURE_COLUMNS),
+        help="features do modelo separadas por vírgula",
+    )
+    parser.add_argument("--algoritmo", default="LOGISTIC_REG")
+    parser.add_argument("--feature-set-version", default=FEATURE_SET_VERSION)
+    parser.add_argument("--por-safra", action="store_true", help="métricas por safra (v3)")
+    parser.add_argument("--nota", default=None)
+    args = parser.parse_args()
 
     result = avaliar_modelo(
         project_id=os.environ["GCP_PROJECT_ID"],
         dataset=os.environ.get("BQ_DATASET", "pme_risk"),
-        bq_model_name="logreg_v2",
-        model_version="logreg_v2",
-        algoritmo="LOGISTIC_REG",
+        bq_model_name=args.model,
+        model_version=args.model,
+        algoritmo=args.algoritmo,
+        feature_set_version=args.feature_set_version,
+        features_table=args.table,
+        feature_columns=args.colunas.split(","),
+        por_safra=args.por_safra,
+        nota=args.nota,
     )
-    print(json.dumps(result, indent=2))
+    print(json.dumps(result, indent=2, ensure_ascii=False))

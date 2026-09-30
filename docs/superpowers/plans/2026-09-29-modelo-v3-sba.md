@@ -126,11 +126,11 @@ RR_uf    = inad_SCR(Micro+Pequeno, uf) / inad_SCR(Micro+Pequeno)
 - Modify: `eval/model/run_eval.py` (versão e feature set por parâmetro)
 - Create: `eval/model/results/logreg_v3.json` (gerado)
 
-- [ ] KS, AUC, Brier, **Brier ingênuo**, ECE no holdout temporal FY2014–2015.
-- [ ] Métricas também **por safra** (2014 × 2015), para ver a estabilidade.
-- [ ] **Sanidade de setor:** correlação de Spearman entre a perda por seção na SBA e a inadimplência por seção no SCR. Vai no JSON, sem limite de aceite (é checagem, não meta).
-- [ ] Critério: `logreg_v3` bate o Brier ingênuo. Candidato só substitui se cumprir D6.
-- [ ] Commit do JSON.
+- [x] KS, AUC, Brier, **Brier ingênuo**, ECE no holdout temporal FY2014–2015. **KS 0,1354 · AUC 0,5845 · Brier 0,0638 < ingênuo 0,0640 ✅ · ECE 0,0071** (n=63.502).
+- [x] Métricas também **por safra** (2014 × 2015), para ver a estabilidade. Brier bate o ingênuo nas duas (0,0610/0,0612 e 0,0662/0,0664); AUC 0,5903 × 0,5799.
+- [x] **Sanidade de setor:** correlação de Spearman entre a perda por seção na SBA e a inadimplência por seção no SCR. Vai no JSON, sem limite de aceite (é checagem, não meta). *(preenchida após a Task 5 — depende de `scr_pj_raw`)*
+- [x] Critério: `logreg_v3` bate o Brier ingênuo. Candidato só substitui se cumprir D6. *(candidato falhou no treino — Task 3)*
+- [x] Commit do JSON.
 
 ### Task 5: Calibração SCR
 

@@ -1,0 +1,33 @@
+{
+  "model_version": "logreg_v3",
+  "algoritmo": "LOGISTIC_REG",
+  "feature_set_version": "v3_sba",
+  "n_amostras": 63502,
+  "prevalencia": 0.0687,
+  "ks": 0.1354,
+  "auc": 0.5845,
+  "brier": 0.0638,
+  "brier_ingenuo": 0.064,
+  "ece": 0.0071,
+  "por_safra": {
+    "2014": {
+      "n_amostras": 29438,
+      "prevalencia": 0.0655,
+      "ks": 0.14,
+      "auc": 0.5903,
+      "brier": 0.061,
+      "brier_ingenuo": 0.0612,
+      "ece": 0.0105
+    },
+    "2015": {
+      "n_amostras": 34064,
+      "prevalencia": 0.0716,
+      "ks": 0.1342,
+      "auc": 0.5799,
+      "brier": 0.0662,
+      "brier_ingenuo": 0.0664,
+      "ece": 0.0042
+    }
+  },
+  "nota": "Holdout temporal FY2014-2015 (D5). Candidato boosted_tree_v3 falhou com internalError 80038528 (3 tentativas, igual ao v1); baseline segue sozinho (D6)."
+}
