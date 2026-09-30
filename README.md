@@ -228,12 +228,12 @@ Multi-agente (Extrator → Pesquisador → Redator) contra o **baseline de chama
 única** exigido pelo PLANO §5 (texto bruto + PD → laudo, mesmo modelo, regras e
 schema de saída), com o **modelo v3**, a calibração SCR, **formatação
 brasileira** no Redator (PD 3,12%, R$ 300 mil, fatores com 3 casas) e o
-**thinking do Gemini desligado**. 62 itens em escopo × 2 rodadas por braço.
+**thinking do Gemini desligado**. 63 itens em escopo, 61 chegam ao Redator (o item 9 falha na extração), × 2 rodadas por braço.
 
 | Métrica (PLANO §5) | Meta | Multi-agente r1 / r2 | Baseline r1 / r2 |
 |---|---|---|---|
 | **Fidedignidade** — afirmações verificáveis com evidência | 100% | 99.84% / 99.94% (1.848 · 1.798) | 99.84% / 99.90% (1.908 · 1.941) |
-| PD citada exatamente | — | 61/62 · 61/62 | 61/62 · 61/62 |
+| PD citada exatamente | — | 61/61 · 61/61 | 61/61 · 61/61 |
 | **Verificado × declarado** — marcação correta por campo no texto | 100% | **100%** / 98.44% | 98.85% / **100%** |
 | Classificação estruturada por campo (`fonte_por_campo`) | — | **100%** | 0% (texto livre) |
 | Latência da redação (mediana, 4 em paralelo) | — | 10.9s / 16.1s | — |
