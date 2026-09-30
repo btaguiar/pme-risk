@@ -150,12 +150,12 @@ RR_uf    = inad_SCR(Micro+Pequeno, uf) / inad_SCR(Micro+Pequeno)
 - Create: `model/dados/ingest_bndes.py`, `model/sql/11_bndes_referencia.sql`
 - Modify: `monitoring/drift_job.py`
 
-- [ ] Ler o CSV de operações indiretas automáticas em streaming e **gravar só o agregado**: MICRO/PEQUENA, contratações 2018–2022, quantis de valor e prazo (`carencia + amortizacao`) por porte e seção.
-- [ ] Verificar se há contratações posteriores a 2022 em outro recurso do conjunto; se não houver, registrar como limite.
-- [ ] Drift: `valor_solicitado` e `prazo_meses` contra o BNDES, e setor (PSI categórico) contra a distribuição do BNDES. Atualizar o docstring: a referência deixa de ser o treino.
-- [ ] Prazo padrão, quando o pedido não informa: mediana do BNDES por porte (substitui `_PRAZO_DEFAULT_MESES`). Hoje o prazo é obrigatório na API, então isso só afeta o eval e o texto.
-- [ ] Testes do drift com referência injetada.
-- [ ] Commit.
+- [x] Ler o CSV de operações indiretas automáticas em streaming e **gravar só o agregado**: MICRO/PEQUENA, contratações 2018–2022, quantis de valor e prazo (`carencia + amortizacao`) por porte e seção. Cooperativas de crédito (CNAE 6424-7) excluídas: são intermediárias e levavam a seção K a 16,6%. Resultado: 98.387 operações.
+- [x] Verificar se há contratações posteriores a 2022 em outro recurso do conjunto; se não houver, registrar como limite.
+- [x] Drift: `valor_solicitado` e `prazo_meses` contra o BNDES, e setor (PSI categórico) contra a distribuição do BNDES. Atualizar o docstring: a referência deixa de ser o treino.
+- [x] ~~Prazo padrão pela mediana do BNDES~~ — **não se aplica**: o prazo saiu do modelo (D3) e é obrigatório na API; nada consumiria o padrão.
+- [x] Testes do drift com referência injetada.
+- [x] Commit.
 
 ### Task 7: Serviço — pipeline, predict, registry
 
