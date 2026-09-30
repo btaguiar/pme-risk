@@ -12,7 +12,7 @@ from pathlib import Path
 from google import genai
 from google.genai import types
 
-from agents.gemini import HTTP_OPTIONS, resolver_project_id, validar_resposta
+from agents.gemini import HTTP_OPTIONS, config_thinking, resolver_project_id, validar_resposta
 from agents.schemas import DadosExtraidos
 
 PROMPT_PATH = Path(__file__).parent / "prompt.md"
@@ -66,6 +66,7 @@ def extrair(
             response_schema=DadosExtraidos,
             temperature=0.0,
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+            thinking_config=config_thinking(),
         ),
     )
 

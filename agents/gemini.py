@@ -30,6 +30,18 @@ HTTP_OPTIONS = types.HttpOptions(
 )
 
 
+def config_thinking() -> types.ThinkingConfig:
+    """Orçamento de "thinking" do Gemini 2.5 Flash (GEMINI_THINKING_BUDGET).
+
+    Padrão 0 (desligado): medido em 2026-09-30, o Extrator caiu de 7,9 s para
+    1,4 s e o Redator de 15,6 s para 4,3 s — com thinking, o pipeline passava
+    dos 60 s do Firebase Hosting. -1 volta ao comportamento dinâmico do modelo
+    (o dos evals v7 de extração e v3 do laudo). Qualidade sem thinking medida
+    nos evals antes de ir para produção (README).
+    """
+    return types.ThinkingConfig(thinking_budget=int(os.environ.get("GEMINI_THINKING_BUDGET", "0")))
+
+
 class RespostaInvalidaError(RuntimeError):
     """O Gemini respondeu, mas sem JSON válido para o schema pedido.
 

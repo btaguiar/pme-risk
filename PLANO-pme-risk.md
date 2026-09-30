@@ -156,6 +156,9 @@ não um modelo pronto para concessão real.
 >   **v3 (formatação brasileira no Redator, 2026-09-30):** fidedignidade
 >   99.71–99.85% (multi) × 99.77–99.81% (baseline); marcação 99.4–100% ×
 >   99.3–99.7% — `laudo_texto_v3.json`.
+>   **v4 (thinking do Gemini desligado, 2026-09-30):** fidedignidade 99.84–99.94%
+>   × 99.84–99.90%; marcação 98.4–100% × 98.9–100% — `laudo_texto_v4.json`.
+>   Extração sem thinking empata (F1 0.9868, `laudo_eval_v7_sem_thinking.json`).
 
 **Baselines obrigatórios:**
 - **Modelo:** regressão logística simples. Modelo mais complexo só entra se

@@ -41,6 +41,9 @@ cru do JSON (`300000.0`, `0.0311967`):
   → "saúde humana e serviços sociais"; finalidade `obras_reforma` → "obras e
   reforma"); nomes técnicos só entre crases, quando forem fatores
 - Títulos das seções com `##` e dados em lista (`-`)
+- Não cite as fronteiras internas das faixas do modelo (ex.: "5 anos ou mais"):
+  descreva a faixa em palavras ("negócio consolidado", "negócio recente") e
+  use só números que estão nos dados
 
 ## Estrutura do laudo
 
@@ -64,7 +67,7 @@ cru do JSON (`300000.0`, `0.0311967`):
 >
 > Principais fatores:
 > - `secao_cnae`: -1,173 (o setor de saúde tem perda histórica abaixo da média)
-> - `faixa_idade`: -0,984 (negócio com 5 anos ou mais reduz o risco)
+> - `faixa_idade`: -0,984 (negócio já consolidado reduz o risco)
 > - `log_valor_usd`: +0,328 (valores menores concentram mais perdas no histórico)
 > - `ajuste_uf_br`: +0,679 (a inadimplência PME da UF está acima da média brasileira)
 >

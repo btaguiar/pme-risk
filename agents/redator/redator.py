@@ -15,7 +15,7 @@ from google import genai
 from google.genai import types
 from pydantic import BaseModel
 
-from agents.gemini import HTTP_OPTIONS, resolver_project_id, validar_resposta
+from agents.gemini import HTTP_OPTIONS, config_thinking, resolver_project_id, validar_resposta
 from agents.schemas import DadosEnriquecidos, ResultadoModelo
 
 PROMPT_PATH = Path(__file__).parent / "prompt.md"
@@ -94,6 +94,7 @@ def chamar_redator(prompt: str, project_id: str | None = None) -> ResultadoRedac
             response_schema=ResultadoRedacao,
             temperature=0.3,
             automatic_function_calling=types.AutomaticFunctionCallingConfig(disable=True),
+            thinking_config=config_thinking(),
         ),
     )
     return validar_resposta(response, ResultadoRedacao)
