@@ -17,7 +17,7 @@ import { Container } from "../components/Layout";
 import { AnimatedNumber } from "../components/AnimatedNumber";
 import { Aviso, Button, ButtonLink, Card, Eyebrow, FaixaBadge, Skeleton, StatusBadge, cx } from "../components/ui";
 import { api, detalheErro, type Decisao, type Laudo } from "../lib/api";
-import { LIMITES_FAIXA, capitalizar, dataCurta, finalidade, fmtNum, moeda } from "../lib/format";
+import { LIMITES_FAIXA, capitalizar, dataCurta, finalidade, fmtNum, moeda, rotuloFator } from "../lib/format";
 
 type Carga = { tipo: "carregando" } | { tipo: "nao-encontrado" } | { tipo: "erro"; status: number } | { tipo: "ok"; laudo: Laudo };
 
@@ -286,8 +286,8 @@ function Fatores({ fatores }: { fatores: [string, number][] }) {
           const largura = (Math.abs(v) / max) * 50;
           return (
             <li key={nome} className="group grid grid-cols-[minmax(0,11rem)_1fr_4.5rem] items-center gap-3 text-sm">
-              <span className="font-mono text-xs truncate text-muted group-hover:text-ink" title={nome}>
-                {nome}
+              <span className="text-xs truncate text-muted group-hover:text-ink" title={nome}>
+                {rotuloFator(nome)}
               </span>
               <span className="relative h-6">
                 <span className="absolute inset-y-0 left-1/2 w-px bg-line-strong" />
@@ -317,7 +317,7 @@ function Fatores({ fatores }: { fatores: [string, number][] }) {
         <span className="flex items-center gap-1.5">
           <span className="size-2.5 rounded-sm bg-info" /> atribuição negativa
         </span>
-        <span>Contribuição de cada variável para a predição do modelo.</span>
+        <span>Contribuição de cada variável para a PD, em escala logit; os ajustes Brasil vêm do SCR.data (BCB).</span>
       </p>
     </div>
   );

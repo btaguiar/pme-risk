@@ -66,6 +66,20 @@ export function idCurto(id: string) {
   return id.slice(0, 8);
 }
 
+/** Fatores do modelo v3 (model/features.py) e ajustes da calibração SCR (model/calibracao.py). */
+const FATORES: Record<string, string> = {
+  secao_cnae: "Setor (CNAE)",
+  faixa_idade: "Idade do negócio",
+  log_valor_usd: "Valor do crédito",
+  ajuste_porte_br: "Ajuste Brasil · porte",
+  ajuste_uf_br: "Ajuste Brasil · UF",
+};
+
+/** Rótulo legível do fator; laudos de modelos antigos caem no nome técnico. */
+export function rotuloFator(nome: string) {
+  return FATORES[nome] ?? nome;
+}
+
 /** Rótulos das finalidades de agents/finalidades.py (vocabulário fechado). */
 const FINALIDADES: Record<string, string> = {
   capital_de_giro: "Capital de giro",

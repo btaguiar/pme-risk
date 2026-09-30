@@ -167,7 +167,13 @@ class Pipeline:
         etapas.append({"etapa": "pesquisador", "timestamp": _agora()})
 
         features = pedido_para_features(enriquecidos.extraidos.pedido)
-        predicao = self._prever_fn(features, project_id=self.project_id, dataset=self.dataset)
+        predicao = self._prever_fn(
+            features,
+            project_id=self.project_id,
+            dataset=self.dataset,
+            porte=extraidos.pedido.porte,
+            uf=extraidos.pedido.uf,
+        )
         etapas.append({"etapa": "modelo", "timestamp": _agora()})
 
         resultado = montar_resultado_modelo(predicao)

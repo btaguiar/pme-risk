@@ -163,11 +163,12 @@ RR_uf    = inad_SCR(Micro+Pequeno, uf) / inad_SCR(Micro+Pequeno)
 - Modify: `api/pipeline.py` (`pedido_para_features`, `FEATURES_CONSTANTES_NO_SERVICO`), `model/predict.py` (`_FEATURE_TYPES` por versão com STRING, `_BQ_MODEL_NAMES`, chamada da calibração), `model/registry.py` (registro do v3, v2 → `retired`)
 - Test: `tests/unit/test_pipeline_features.py`, `tests/unit/test_predict.py` (novo, com BQ mockado)
 
-- [ ] `pedido_para_features` v3: `secao_cnae`, `faixa_idade`, `log_valor_usd` (fator PPP, P1).
-- [ ] `prever` aplica a calibração e devolve os fatores do modelo + os dois ajustes.
-- [ ] Frontend: rótulos legíveis para os novos nomes de fator (`frontend/src/lib/format.ts`).
-- [ ] Teste de contrato: o conjunto de features do serviço é exatamente `FEATURE_COLUMNS` do v3 (pega skew treino/serviço, como no v1).
-- [ ] Commit.
+- [x] `pedido_para_features` v3: `secao_cnae`, `faixa_idade`, `log_valor_usd` (fator PPP, P1).
+- [x] `prever` aplica a calibração e devolve os fatores do modelo + os dois ajustes.
+- [x] Frontend: rótulos legíveis para os novos nomes de fator (`frontend/src/lib/format.ts`).
+- [x] Teste de contrato: o conjunto de features do serviço é exatamente `FEATURE_COLUMNS` do v3 (pega skew treino/serviço, como no v1).
+- [x] `logreg_v3` registrado como `candidate`. A promoção (v3 `production`, v2 `retired`) fica para o deploy (Task 9): a imagem no ar só conhece o v2 e quebraria.
+- [x] Commit.
 
 ### Task 8: Evals do laudo e documentação
 

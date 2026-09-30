@@ -86,7 +86,7 @@ def _pipeline(
     def enriquecer_fn(extraidos: DadosExtraidos) -> DadosEnriquecidos:
         return DadosEnriquecidos(extraidos=extraidos, fonte_por_campo={"setor": "declarado"})
 
-    def prever_fn(features: dict[str, float | str], project_id: str, dataset: str):
+    def prever_fn(features: dict[str, float | str], project_id: str, dataset: str, **_calib):
         from model.predict import ResultadoPredicao
 
         if features_capturadas is not None:

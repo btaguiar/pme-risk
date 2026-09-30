@@ -50,12 +50,12 @@ def _enriquecer(extraidos):
     )
 
 
-def _prever(features, project_id, dataset):
+def _prever(features, project_id, dataset, **_calib):
     return ResultadoPredicao(
         pd=0.0664,
         faixa_risco="medio",
         fatores=[("log_valor_usd", -0.264), ("faixa_idade", 0.08)],
-        model_version="logreg_v2",
+        model_version="logreg_v3",
     )
 
 

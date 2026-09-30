@@ -96,7 +96,11 @@ def preparar(
             return {"indice": indice, "motivo": f"recusado: {extraidos.motivo_recusa}"}
         enriquecidos = enriquecer_fn(extraidos)
         predicao = prever_fn(
-            pedido_para_features(extraidos.pedido), project_id=project_id, dataset=dataset
+            pedido_para_features(extraidos.pedido),
+            project_id=project_id,
+            dataset=dataset,
+            porte=extraidos.pedido.porte,
+            uf=extraidos.pedido.uf,
         )
     except Exception as e:
         return {"indice": indice, "motivo": f"{type(e).__name__}: {e}"[:300]}

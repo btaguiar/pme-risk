@@ -1,7 +1,12 @@
 """Predição de risco — PD + fatores a partir do modelo publicado.
 
-Referência: SPEC §3.5
+Referência: SPEC §3.5, plano do v3 (Task 7)
 Regra: pd vem SEMPRE do modelo, nunca do LLM (PLANO §2, BRIEF.md)
+
+v3: ML.PREDICT do `logreg_v3` (SBA 7(a)) e, com porte e UF, a calibração
+brasileira do SCR em escala logit (model/calibracao.py). Os dois ajustes
+voltam como fatores nomeados (`ajuste_porte_br`, `ajuste_uf_br`) para o laudo
+explicar a diferença entre a PD do modelo e a final.
 """
 
 from __future__ import annotations
@@ -10,23 +15,20 @@ from dataclasses import dataclass
 
 from google.cloud import bigquery
 
+from model import calibracao
 from model.registry import ModelRegistry
 
 # Tipos das features do feature set atual (model/features.py, FEATURE_COLUMNS)
 _FEATURE_TYPES: dict[str, str] = {
-    "amt_income_total": "FLOAT64",
-    "amt_credit": "FLOAT64",
-    "amt_annuity": "FLOAT64",
-    "prazo_meses_estimado": "FLOAT64",
-    "anos_operacao": "FLOAT64",
-    "sem_emprego_registrado": "INT64",
-    "region_rating": "INT64",
+    "secao_cnae": "STRING",
+    "faixa_idade": "STRING",
+    "log_valor_usd": "FLOAT64",
 }
 
 # Nome físico do modelo BQML por model_version do registry. Só versões treinadas
-# com o feature set atual — v1 usava outras colunas e não serve mais o pipeline.
+# com o feature set atual — v1/v2 (Home Credit) usam outras colunas.
 _BQ_MODEL_NAMES: dict[str, str] = {
-    "logreg_v2": "logreg_v2",
+    "logreg_v3": "logreg_v3",
 }
 
 
@@ -66,7 +68,9 @@ def _resolver_bq_model_name(model_version: str) -> str:
     return name
 
 
-def _montar_feature_params(features: dict[str, float]) -> dict[str, bigquery.ScalarQueryParameter]:
+def _montar_feature_params(
+    features: dict[str, float | str],
+) -> dict[str, bigquery.ScalarQueryParameter]:
     """Monta query parameters tipados para as features."""
     params: dict[str, bigquery.ScalarQueryParameter] = {}
     for name, type_ in _FEATURE_TYPES.items():
@@ -75,6 +79,8 @@ def _montar_feature_params(features: dict[str, float]) -> dict[str, bigquery.Sca
         value = features[name]
         if type_ == "INT64":
             params[name] = bigquery.ScalarQueryParameter(name, "INT64", int(value))
+        elif type_ == "STRING":
+            params[name] = bigquery.ScalarQueryParameter(name, "STRING", str(value))
         else:
             params[name] = bigquery.ScalarQueryParameter(name, "FLOAT64", float(value))
     return params
@@ -86,9 +92,11 @@ def _montar_feature_select() -> str:
 
 
 def prever(
-    features: dict[str, float],
+    features: dict[str, float | str],
     project_id: str,
     dataset: str,
+    porte: str | None = None,
+    uf: str | None = None,
 ) -> ResultadoPredicao:
     """Prediz PD + fatores para um vetor de features.
 
@@ -96,9 +104,11 @@ def prever(
         features: dict com as features do modelo (ver model/features.py)
         project_id: GCP project ID
         dataset: BigQuery dataset
+        porte, uf: do pedido — com os dois, aplica a calibração SCR
 
     Returns:
-        ResultadoPredicao com pd, faixa_risco, fatores e model_version
+        ResultadoPredicao com pd (calibrada, se porte e UF), faixa_risco,
+        fatores (+ ajustes da calibração) e model_version
     """
     registry = ModelRegistry(project_id, dataset)
     model = registry.obter_producao()
@@ -129,7 +139,6 @@ def prever(
         raise RuntimeError("Predição retornou vazio")
 
     pd = float(dict(results[0])["pd"])
-    faixa = classificar_faixa_risco(pd)
 
     # Fatores via ML.EXPLAIN_PREDICT
     explain_sql = f"""
@@ -147,9 +156,15 @@ def prever(
             for item in attributions:
                 fatores.append((item["feature"], float(item["attribution"])))
 
+    if porte is not None and uf is not None:
+        pd, ajustes = calibracao.aplicar(
+            pd, porte, uf, calibracao.carregar_fatores(project_id, dataset)
+        )
+        fatores.extend(ajustes)
+
     return ResultadoPredicao(
         pd=pd,
-        faixa_risco=faixa,
+        faixa_risco=classificar_faixa_risco(pd),
         fatores=fatores,
         model_version=model_version,
     )
@@ -158,20 +173,12 @@ def prever(
 if __name__ == "__main__":
     import os
 
-    example_features = {
-        "amt_income_total": 200000.0,
-        "amt_credit": 300000.0,
-        "amt_annuity": 15000.0,
-        "prazo_meses_estimado": 20.0,
-        "anos_operacao": 5.0,
-        "sem_emprego_registrado": 0.0,
-        "region_rating": 2.0,
-    }
-
     result = prever(
-        features=example_features,
+        features={"secao_cnae": "comercio", "faixa_idade": "5_mais", "log_valor_usd": 10.0},
         project_id=os.environ["GCP_PROJECT_ID"],
         dataset=os.environ.get("BQ_DATASET", "pme_risk"),
+        porte="ME",
+        uf="SP",
     )
     print(f"PD: {result.pd:.4f}")
     print(f"Faixa: {result.faixa_risco}")
